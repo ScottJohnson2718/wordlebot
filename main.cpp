@@ -13,39 +13,41 @@ uint32_t ComputeMask( const std::string &word)
 {
     uint32_t mask(0);
 
-    for (int i = 0; i < word.size(); ++i) {
-        mask |= 1 << ('a' - word[i]);
+    for (int i = 0; i < word.size(); ++i)
+    {
+        if (word[i] >= 'a' && word[i] <= 'z')
+            mask |= 1 << (word[i] - 'a');
     }
     return mask;
 }
 
-std::vector<CharScore> Score( const std::string &solution, const std::string &guess)
-{
-    std::vector<CharScore> score;
-    uint32_t solutionMask = ComputeMask(solution);
-
-    for (int i = 0; i < solution.size(); ++i)
-    {
-        if (guess[i] == solution[i])
-        {
-            score.push_back( Correct );
-        }
-        else
-        {
-            uint32_t charMask = 1 << (guess[i] - 'a');
-
-            if (charMask & solutionMask)
-            {
-                score.push_back(CorrectNotHere);
-            }
-            else
-            {
-                score.push_back(NotPresent);
-            }
-        }
-    }
-    return score;
-}
+//std::vector<CharScore> Score( const std::string &solution, const std::string &guess)
+//{
+//    std::vector<CharScore> score;
+//    uint32_t solutionMask = ComputeMask(solution);
+//
+//    for (int i = 0; i < solution.size(); ++i)
+//    {
+//        if (guess[i] == solution[i])
+//        {
+//            score.push_back( Correct );
+//        }
+//        else
+//        {
+//            uint32_t charMask = 1 << (guess[i] - 'a');
+//
+//            if (charMask & solutionMask)
+//            {
+//                score.push_back(CorrectNotHere);
+//            }
+//            else
+//            {
+//                score.push_back(NotPresent);
+//            }
+//        }
+//    }
+//    return score;
+//}
 
 struct Board
 {
@@ -144,8 +146,8 @@ struct WordQuery
 
                 // Don't consider letters that we must have
                 if ((charMask & mustContain) == 0) {
-                    // This is a new letter. Pretend it is not there
-                    cantContain[i] |= (1 << (guess[i] - 'a'));
+                    // This is a new letter. Pretend it is not in the solution
+                    SetCantContain(ch);
                 }
             }
         }
@@ -220,10 +222,10 @@ struct Bot
         std::string bestGuess;
 
         // Try the remaining words first
-        for (size_t dictionaryWordIndex = 0; dictionaryWordIndex < remaining.size(); ++dictionaryWordIndex)
+        for (size_t remainingWordIndex = 0; remainingWordIndex < remaining.size(); ++remainingWordIndex)
         {
             WordQuery newQuery(query);
-            const std::string& dictionaryWord = remaining[dictionaryWordIndex];
+            const std::string& dictionaryWord = remaining[remainingWordIndex];
             newQuery.ScoreCandidate(dictionaryWord);
 
             size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
@@ -257,21 +259,31 @@ struct Bot
         {
             std::string guess = board.guesses[guessIndex];
             auto score = board.scores[guessIndex];
+            // Avoid a quirk in wordle where it scores guesses with a contradiction.
+            // For instance, "moony" was scored "..oN." which says there is no 'o'
+            // but there is an 'o' in the third position
+
             for (int charIndex = 0; charIndex < score.size(); ++charIndex)
             {
                 CharScore scoreChar = score[charIndex];
-                if (scoreChar == NotPresent)
+                if (scoreChar == Correct)
+                    query.SetCorrect( charIndex, guess[charIndex]);
+            }
+            uint32_t correctMask = ComputeMask(query.correct);
+            for (int charIndex = 0; charIndex < score.size(); ++charIndex)
+            {
+                CharScore scoreChar = score[charIndex];
+                uint32_t charMask = (1 << (guess[charIndex] - 'a'));
+                if (scoreChar == NotPresent && ((charMask & correctMask) == 0))
                 {
+                    // Set that the char is not present in the word but only
+                    // if it is not already a char in the correct list
                     query.SetCantContain(guess[charIndex]);
                 }
-                else if (scoreChar == CorrectNotHere)
+                else if (scoreChar != Correct)
                 {
                     query.SetMustContain(guess[charIndex]);
                     query.SetCantContain(charIndex, guess[charIndex]);
-                }
-                else
-                {
-                    query.SetCorrect( charIndex, guess[charIndex]);
                 }
             }
         }
@@ -311,7 +323,6 @@ struct Bot
     }
 };
 
-
 int main(int argc, char *argv[])
 {
     int n = 5;
@@ -321,9 +332,26 @@ int main(int argc, char *argv[])
 
     Board board(5);
 
-    for (int guesses = 1; guesses < argc; ++guesses)
+    for (int guesses = 1; guesses < argc; guesses+=2)
     {
-        board.PushScoredGuess(argv[guesses], argv[guesses+1]);
+        std::string guess = argv[guesses];
+        std::string score = argv[guesses+1];
+
+        std::cout << "Guessed : " << guess << " with score " << score << std::endl;
+
+        if (guess.size() != n)
+        {
+            std::cerr << "Guess " << guess << " needs to have " << n << " characters in it" << std::endl;
+            exit(1);
+        }
+
+        if (score.size() != n)
+        {
+            std::cerr << "Score " << score << " needs to have " << n << " characters in it" << std::endl;
+            exit(1);
+        }
+
+        board.PushScoredGuess(guess, score);
     }
 //    board.PushScoredGuess("adieu", "A....");
 //    board.PushScoredGuess("story", ".T.R.");
