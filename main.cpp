@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 enum CharScore { NotPresent, Correct, CorrectNotHere };
 
@@ -208,15 +209,17 @@ void LoadDictionary( const std::filesystem::path &filename, std::vector<std::str
 
 struct Bot
 {
-    std::string BestGuess( const WordQuery& query,
+    std::vector<std::string> BestGuesses( const WordQuery& query,
                          const std::vector<std::string> &words,
                          const std::vector<std::string> &remaining,
                          size_t &resultingSearchSpaceSize)
     {
+        std::vector<std::string> guesses;
         if (remaining.size() == 1)
         {
             resultingSearchSpaceSize = 1;
-            return remaining[0];
+            guesses.push_back(remaining[0]);
+            return guesses;
         }
         resultingSearchSpaceSize = 1000000;
         std::string bestGuess;
@@ -240,6 +243,9 @@ struct Bot
         {
             WordQuery newQuery(query);
             const std::string& dictionaryWord = words[dictionaryWordIndex];
+            if (dictionaryWord == bestGuess)
+                continue;
+
             newQuery.ScoreCandidate(dictionaryWord);
 
             size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
@@ -247,9 +253,26 @@ struct Bot
             {
                 resultingSearchSpaceSize = searchSpaceSize;
                 bestGuess = dictionaryWord;
+             }
+        }
+        guesses.push_back(bestGuess);
+        // Find words that are just as good as the bestGuess
+        for (size_t dictionaryWordIndex = 0; dictionaryWordIndex < words.size(); ++dictionaryWordIndex)
+        {
+            WordQuery newQuery(query);
+            const std::string& dictionaryWord = words[dictionaryWordIndex];
+            if (dictionaryWord == bestGuess)
+                continue;
+
+            newQuery.ScoreCandidate(dictionaryWord);
+
+            size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
+            if (searchSpaceSize > 0 && searchSpaceSize == resultingSearchSpaceSize)
+            {
+                guesses.push_back(dictionaryWord);
             }
         }
-        return bestGuess;
+        return guesses;
     }
 
     WordQuery GenerateQuery( const Board &board, const std::vector<std::string> &words)
@@ -369,7 +392,13 @@ int main(int argc, char *argv[])
     }
 
     size_t resultingSearchSpaceSize(0);
-    std::string best = bot.BestGuess(query, words, remaining, resultingSearchSpaceSize);
-    std::cout << "Best guess : " << best << " reduces the search space to " << resultingSearchSpaceSize << std::endl;
+    auto guesses = bot.BestGuesses(query, words, remaining, resultingSearchSpaceSize);
+    std::cout << "Guesses that reduce the search space to " << resultingSearchSpaceSize << std::endl;
+    size_t count = std::min((size_t)5, guesses.size());
+    for (size_t i = 0; i < count; ++i) {
+            std::cout << guesses[i] << std::endl;
+        }
+
+
     return 0;
 }
