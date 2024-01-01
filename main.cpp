@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <random>
 
 enum CharScore { NotPresent, Correct, CorrectNotHere };
 
@@ -394,11 +395,15 @@ int main(int argc, char *argv[])
     size_t resultingSearchSpaceSize(0);
     auto guesses = bot.BestGuesses(query, words, remaining, resultingSearchSpaceSize);
     std::cout << "Guesses that reduce the search space to " << resultingSearchSpaceSize << std::endl;
-    size_t count = std::min((size_t)5, guesses.size());
-    for (size_t i = 0; i < count; ++i) {
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    std::shuffle(guesses.begin(), guesses.end(), g);
+
+    size_t count = std::min((size_t)8, guesses.size());
+    for (size_t i = 0; i < count; ++i)
+    {
             std::cout << guesses[i] << std::endl;
-        }
-
-
+    }
     return 0;
 }
