@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
 {
     int n = 5;
     std::vector<std::string> words;
-    LoadDictionary("/work/git_repos/wordlebot/words5", words);
+    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", words);
     std::cout << "loaded " << words.size() << " words." << std::endl;
 
     Board board(5);
