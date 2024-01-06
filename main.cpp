@@ -23,33 +23,33 @@ uint32_t ComputeMask( const std::string &word)
     return mask;
 }
 
-//std::vector<CharScore> Score( const std::string &solution, const std::string &guess)
-//{
-//    std::vector<CharScore> score;
-//    uint32_t solutionMask = ComputeMask(solution);
-//
-//    for (int i = 0; i < solution.size(); ++i)
-//    {
-//        if (guess[i] == solution[i])
-//        {
-//            score.push_back( Correct );
-//        }
-//        else
-//        {
-//            uint32_t charMask = 1 << (guess[i] - 'a');
-//
-//            if (charMask & solutionMask)
-//            {
-//                score.push_back(CorrectNotHere);
-//            }
-//            else
-//            {
-//                score.push_back(NotPresent);
-//            }
-//        }
-//    }
-//    return score;
-//}
+std::vector<CharScore> Score( const std::string &solution, const std::string &guess)
+{
+    std::vector<CharScore> score;
+    uint32_t solutionMask = ComputeMask(solution);
+
+    for (int i = 0; i < solution.size(); ++i)
+    {
+        if (guess[i] == solution[i])
+        {
+            score.push_back( Correct );
+        }
+        else
+        {
+            uint32_t charMask = 1 << (guess[i] - 'a');
+
+            if (charMask & solutionMask)
+            {
+                score.push_back(CorrectNotHere);
+            }
+            else
+            {
+                score.push_back(NotPresent);
+            }
+        }
+    }
+    return score;
+}
 
 struct Board
 {
@@ -58,6 +58,12 @@ struct Board
     Board(int lettersPerWord)
     : n(lettersPerWord)
     {
+    }
+
+    void PushScoredGuess(std::string const &guessStr, const std::vector<CharScore>& score)
+    {
+        guesses.push_back(guessStr);
+        scores.push_back(score);
     }
 
     void PushScoredGuess(std::string const &guessStr, const std::string& scoreStr)
@@ -135,7 +141,7 @@ struct WordQuery
 
     // Pretend like none of the characters in this guess are in the solution
     // The idea is to pretend that we guess the given guess and that the
-    // new letters are not found. That would prune the search space alot.
+    // new letters are not found. That would prune the search space a lot.
     // We prune best when we introduce new letters to the query.
     void ScoreCandidate(const std::string &guess)
     {
@@ -345,9 +351,85 @@ struct Bot
 
         return size;
     }
+
+    int SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess,
+                     const std::vector<std::string> &words )
+    {
+        if (hiddenSolution == openingGuess)
+            return 1;
+
+        Board board(5);
+
+        // Make the opening guess to reduce the search space right away
+        auto firstScore = Score(hiddenSolution, openingGuess);
+        board.PushScoredGuess( openingGuess, firstScore);
+
+        bool solved = false;
+        int guessCount = 1;
+        std::string previousGuess = openingGuess;
+
+        while (!solved) {
+            WordQuery query = GenerateQuery(board, words);
+            std::vector<std::string> remaining = PruneSearchSpace(query, words);
+            if (remaining.size() == 1)
+            {
+                // You still need one more guess to make the final guess
+                guessCount++;
+                solved = true;
+                //std::cout << hiddenSolution << " solved in " << guessCount << " guesses" << std::endl;
+                break;
+            }
+            //std::cout << "Remaining word count : " << remaining.size() << std::endl;
+            size_t resultingSearchSpaceSize(0);
+            auto guesses = BestGuesses(query, words, remaining, resultingSearchSpaceSize);
+
+            if (remaining.empty())
+            {
+                std::cerr << "No solution for word " << hiddenSolution << std::endl;
+                return 0;
+            }
+
+            std::string bestGuess;
+            if (guesses.size() > 2 && (guesses[0] != previousGuess))
+            {
+                // Pick from the list of guesses that most reduce the search space
+                bestGuess = guesses[0]; // primitive algorithm
+            }
+            else
+            {
+                // Pick from the remaining list of candidate words
+                bestGuess = remaining[0];
+            }
+            auto score = Score(hiddenSolution, bestGuess);
+            board.PushScoredGuess(bestGuess, score);
+
+            previousGuess = bestGuess;
+            guessCount++;
+            if (guessCount > 10)
+            {
+                // Debug runaway condition
+                std::cerr << "Solution word " << hiddenSolution << " guess is " << bestGuess << std::endl;
+                std::cerr << "previous guess : " << previousGuess << std::endl;
+                std::cerr << guesses.size() << " guesses, " << remaining.size() << " remaining " << std::endl;
+            }
+        }
+        return guessCount;
+    }
 };
 
-int main(int argc, char *argv[])
+void TestWords(std::vector<std::string> &solutionWords, const std::string &openingGuess)
+{
+    Bot bot;
+
+    int guesses = 0;
+    for (auto const word : solutionWords)
+    {
+        guesses += bot.SolvePuzzle( word, openingGuess, solutionWords );
+    }
+    std::cout << "Total guesses for : "<< openingGuess << " " << guesses << std::endl;
+}
+
+void InteractiveRound(int argc, char *argv[])
 {
     int n = 5;
     std::vector<std::string> words;
@@ -377,11 +459,6 @@ int main(int argc, char *argv[])
 
         board.PushScoredGuess(guess, score);
     }
-//    board.PushScoredGuess("adieu", "A....");
-//    board.PushScoredGuess("story", ".T.R.");
-//    board.PushScoredGuess( "chunk", "c....");
-//    board.PushScoredGuess( "craft", "cRA.t");
-    //board.PushScoredGuess( "brows", ".ro.s");
 
     Bot bot;
     WordQuery query = bot.GenerateQuery(board, words);
@@ -403,7 +480,25 @@ int main(int argc, char *argv[])
     size_t count = std::min((size_t)8, guesses.size());
     for (size_t i = 0; i < count; ++i)
     {
-            std::cout << guesses[i] << std::endl;
+        std::cout << guesses[i] << std::endl;
     }
+}
+
+void TestOpeningWords()
+{
+    std::vector<std::string> solutionWords;
+    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
+    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
+
+    TestWords(solutionWords, "stoae");  // 9659
+    TestWords(solutionWords, "arose");  // 9640
+    TestWords(solutionWords, "limen");  // 9825
+    TestWords(solutionWords, "daisy");  // 9822
+}
+
+int main(int argc, char *argv[])
+{
+    //TestOpeningWords();
+    InteractiveRound(argc, argv);
     return 0;
 }
