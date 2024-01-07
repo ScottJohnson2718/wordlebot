@@ -11,16 +11,16 @@ using ScoredGuess = std::pair< std::string, size_t >;
 
 enum CharScore { NotPresent, Correct, CorrectNotHere };
 
-static std::vector<CharScore> noneFound5 = {NotPresent, NotPresent, NotPresent, NotPresent, NotPresent};
-
 uint32_t ComputeMask( const std::string &word)
 {
     uint32_t mask(0);
 
     for (int i = 0; i < word.size(); ++i)
     {
-        if (word[i] >= 'a' && word[i] <= 'z')
-            mask |= 1 << (word[i] - 'a');
+        // This has to handle a '.' as a char that is skipped
+        char ch = tolower(word[i]);
+        if (ch >= 'a' && ch <= 'z')
+            mask |= 1 << (ch - 'a');
     }
     return mask;
 }
@@ -584,7 +584,6 @@ void InteractiveRound(int argc, char *argv[])
         std::cout << "Using New York Times mode" << std::endl;
     else
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
-
 
     Bot bot;
     WordQuery query = board.GenerateQuery();
