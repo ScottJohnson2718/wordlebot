@@ -519,16 +519,38 @@ void TestWords(std::vector<std::string> &solutionWords, const std::string &openi
 void InteractiveRound(int argc, char *argv[])
 {
     int n = 5;
-    std::vector<std::string> words;
-    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", words);
-    std::cout << "loaded " << words.size() << " words." << std::endl;
+    // These dictionaries do not share words between them. We can combine them without making duplicates.
+    std::vector<std::string> guessingWords;
+    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
+    std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
 
+    std::vector<std::string> solutionWords;
+    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
+    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
+
+
+    // New York Times mode keeps the solution words and the guessing words separate.
+    // Wordlebot can converge on a solution quickly with fewer words available as solution words.
+    // The Lion Studios app has a larger selection of solution words and using just the short
+    // words dictionary misses solution words. In that case we have to use all the strange words
+    // in the long dictionary as possible solution words. That is not optimal but this is the
+    // the weakness in the dictionaries as used for the Lion Studios app.
+    bool newYorkTimes = false;
+
+    // Init a board for 5 letter words
     Board board(5);
 
-    for (int guesses = 1; guesses < argc; guesses+=2)
+    for (int tokenIndex = 1; tokenIndex < argc; )
     {
-        std::string guess = argv[guesses];
-        std::string score = argv[guesses+1];
+        if (strcmp(argv[tokenIndex], "--nyt") == 0)
+        {
+            newYorkTimes = true;
+            ++tokenIndex;
+            continue;
+        }
+
+        std::string guess = argv[tokenIndex];
+        std::string score = argv[tokenIndex+1];
 
         std::cout << "Guessed : " << guess << " with score " << score << std::endl;
 
@@ -545,24 +567,40 @@ void InteractiveRound(int argc, char *argv[])
         }
 
         board.PushScoredGuess(guess, score);
+        tokenIndex += 2;
     }
+
+    if (!newYorkTimes)
+    {
+        // For Lion Studios, we make one big dictionary and the guessing words and solution
+        // words are actually the same list
+        std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
+        guessingWords = solutionWords;
+    }
+    // For new york times, again, we keep the solution words and the guessing words separate. The solutions
+    // words is a fairly small list.
+
+    if (newYorkTimes)
+        std::cout << "Using New York Times mode" << std::endl;
+    else
+        std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
+
 
     Bot bot;
     WordQuery query = board.GenerateQuery();
-    std::vector<std::string>  remaining = bot.PruneSearchSpace(query, words);
+    std::vector<std::string>  remaining = bot.PruneSearchSpace(query, solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
     for (auto const &w : remaining)
     {
         std::cout << w << std::endl;
     }
 
-    auto bestGuesses = bot.BestGuessesWithSearch(board, words, remaining);
+    auto bestGuesses = bot.BestGuessesWithSearch(board, guessingWords, remaining);
     std::cout << "Best guesses " << std::endl;
     for (const auto &g : bestGuesses)
     {
         std::cout << g.first << " : " << g.second << std::endl;
     }
-
 }
 
 void TestOpeningWords()
