@@ -459,8 +459,6 @@ struct Bot
             }
             if (verbose)
                 std::cout << "Remaining word count : " << remaining.size() << std::endl;
-            size_t resultingSearchSpaceSize(0);
-            auto guesses = BestGuesses(query, words, remaining, resultingSearchSpaceSize);
 
             if (remaining.empty())
             {
@@ -468,12 +466,13 @@ struct Bot
                 board.Pop();
                 return 0;
             }
+            auto guesses = BestGuessesWithSearch(board, words, remaining);
 
             std::string bestGuess;
-            if (guesses.size() > 2 && (guesses[0] != previousGuess))
+            if (guesses.size() > 2 && (guesses[0].first != previousGuess))
             {
                 // Pick from the list of guesses that most reduce the search space
-                bestGuess = guesses[0]; // primitive algorithm
+                bestGuess = guesses[0].first; // primitive algorithm
             }
             else
             {
