@@ -151,7 +151,7 @@ struct WordQuery
 struct Board
 {
     int n;
-
+    Board() = default;
     Board(int lettersPerWord)
     : n(lettersPerWord)
     {
@@ -519,15 +519,6 @@ void TestWords(std::vector<std::string> &solutionWords, const std::string &openi
 void InteractiveRound(int argc, char *argv[])
 {
     int n = 5;
-    // These dictionaries do not share words between them. We can combine them without making duplicates.
-    std::vector<std::string> guessingWords;
-    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
-    std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
-
-    std::vector<std::string> solutionWords;
-    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
-    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
-
 
     // New York Times mode keeps the solution words and the guessing words separate.
     // Wordlebot can converge on a solution quickly with fewer words available as solution words.
@@ -537,8 +528,7 @@ void InteractiveRound(int argc, char *argv[])
     // the weakness in the dictionaries as used for the Lion Studios app.
     bool newYorkTimes = false;
 
-    // Init a board for 5 letter words
-    Board board(5);
+    Board board;
 
     for (int tokenIndex = 1; tokenIndex < argc; )
     {
@@ -546,6 +536,14 @@ void InteractiveRound(int argc, char *argv[])
         {
             newYorkTimes = true;
             ++tokenIndex;
+            n = 5;
+            continue;
+        }
+        if (strcmp(argv[tokenIndex], "--six") == 0)
+        {
+            newYorkTimes = false;
+            n = 6;
+            tokenIndex++;
             continue;
         }
 
@@ -569,16 +567,37 @@ void InteractiveRound(int argc, char *argv[])
         board.PushScoredGuess(guess, score);
         tokenIndex += 2;
     }
+    board.n = n;
+
+    // These dictionaries do not share words between them. We can combine them without making duplicates.
+    std::vector<std::string> guessingWords;
+    std::vector<std::string> solutionWords;
 
     if (!newYorkTimes)
     {
-        // For Lion Studios, we make one big dictionary and the guessing words and solution
-        // words are actually the same list
-        std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
-        guessingWords = solutionWords;
+        if (n == 5)
+        {
+            LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
+            LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
+            // For Lion Studios, we make one big dictionary and the guessing words and solution
+            // words are actually the same list
+            std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
+            guessingWords = solutionWords;
+        }
+        else if (n == 6)
+        {
+            LoadDictionary("/Users/scott/words6", guessingWords);
+            solutionWords = guessingWords;
+        }
     }
-    // For new york times, again, we keep the solution words and the guessing words separate. The solutions
-    // words is a fairly small list.
+    else
+    {
+        // For new york times, again, we keep the solution words and the guessing words separate. The solutions
+        // words is a fairly small list.
+        LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
+        LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
+    }
+
 
     if (newYorkTimes)
         std::cout << "Using New York Times mode" << std::endl;
