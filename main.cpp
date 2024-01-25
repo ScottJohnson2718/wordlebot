@@ -8,9 +8,11 @@
 #include <random>
 
 #include "WordQuery.h"
-#include "WordTree.h"
+//#include "WordTree.h"
+#include "Entropy.h"
 
-using ScoredGuess = std::pair< std::string, size_t >;
+using ScoredGuess = std::pair< std::string, float >;
+using FrequencyTable = std::array<float, 26>;
 
 enum CharScore { NotPresent, Correct, CorrectNotHere };
 
@@ -241,35 +243,47 @@ struct Bot
             guesses.push_back(ScoredGuess(remaining[0], 1));
             return guesses;
         }
-        std::vector< ScoredGuess > totalSearchSpace;
 
-        WordTree remainingWordTree(remaining);
+        // Compute the frequency table on the remaining words that satisfy the board
+        FrequencyTable freqs = charFrequency( remaining);
 
-        // Try all the remaining words as guesses
-        for (auto const &guessWord : remaining)
+        std::vector< ScoredGuess > scoredGuesses;
+        std::vector< ScoredGuess > topGuessesByEntropy;
+        std::vector< ScoredGuess > topGuessesBySearchSpace;
+
+        for (const auto &w : remaining)
         {
-            size_t totalSearchSpaceSize = 0;
-
-            // Pretend that each of the remaining words is the solution and
-            // see how well the current guess would prune the search space.
-            for (auto const &possibleSolution : remaining)
-            {
-                auto score = Score(possibleSolution, guessWord);
-
-                board.PushScoredGuess(guessWord, score);
-                WordQuery query = board.GenerateQuery();
-
-                size_t searchSpaceSize = remainingWordTree.SatisfiesCount(query);
-                totalSearchSpaceSize += searchSpaceSize;
-
-                board.Pop();
-            }
-            totalSearchSpace.push_back( ScoredGuess( guessWord, totalSearchSpaceSize));
+            float ent = entropy(w, freqs);
+            scoredGuesses.push_back(ScoredGuess( w, ent));
         }
-        for (auto const &guessWord : words)
+        for (const auto &w : words)
+        {
+            float ent = entropy(w, freqs);
+            scoredGuesses.push_back(ScoredGuess( w, ent));
+        }
+
+        // Sort by entropy big to small
+         std::sort( scoredGuesses.begin(), scoredGuesses.end(),
+                   []( const ScoredGuess &a, const ScoredGuess &b)
+                   {
+                       return a.second > b.second;
+                   });
+
+
+        std::cout << "Top guesses by entropy" << std::endl;
+        for (int i = 0; i < std::min(10, (int) scoredGuesses.size()); ++i)
+        {
+            std::cout << scoredGuesses[i].first << std::endl;
+        }
+        for (int i = 0; i < std::min(200, (int) scoredGuesses.size()); ++i)
+        {
+            topGuessesByEntropy.push_back(scoredGuesses[i]);
+        }
+
+        for (auto const &guess : topGuessesByEntropy)
         {
             size_t totalSearchSpaceSize = 0;
-
+            auto guessWord = guess.first;
             // Pretend that each of the remaining words is the solution and
             // see how well the current guess would prune the search space.
             for (auto const &possibleSolution : remaining)
@@ -279,25 +293,25 @@ struct Bot
                 board.PushScoredGuess(guessWord, score);
                 WordQuery query = board.GenerateQuery();
 
-                size_t searchSpaceSize = remainingWordTree.SatisfiesCount(query);
+                size_t searchSpaceSize = SearchSpaceSize(query, remaining);
                 totalSearchSpaceSize += searchSpaceSize;
 
                 board.Pop();
             }
-            totalSearchSpace.push_back( ScoredGuess( guessWord, totalSearchSpaceSize));
+            topGuessesBySearchSpace.push_back( ScoredGuess( guessWord, (float) totalSearchSpaceSize));
         }
 
         // Sort them small to big
         // Could use nth instead
-        std::sort( totalSearchSpace.begin(), totalSearchSpace.end(),
+        std::sort( topGuessesBySearchSpace.begin(), topGuessesBySearchSpace.end(),
                    []( const ScoredGuess &a, const ScoredGuess &b)
                    {
                         return a.second < b.second;
                    }
                    );
-        for (size_t i = 0; i < 20 && i < totalSearchSpace.size(); ++i)
+        for (size_t i = 0; i < 20 && i < topGuessesBySearchSpace.size(); ++i)
         {
-            guesses.push_back( totalSearchSpace[i] );
+            guesses.push_back( topGuessesBySearchSpace[i] );
         }
         return guesses;
     }
@@ -517,9 +531,8 @@ void InteractiveRound(int argc, char *argv[])
 
     Bot bot;
     WordQuery query = board.GenerateQuery();
-    WordTree solutionWordTree;
-    solutionWordTree.InsertWords(solutionWords);
-    std::vector<std::string>  remaining = solutionWordTree.Satisfies(query);
+
+    std::vector<std::string>  remaining = bot.PruneSearchSpace(query, solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
     for (auto const &w : remaining)
     {
@@ -578,24 +591,24 @@ void Cable()
     //std::cout << "Total guesses for cable with opening : "<< "stale" << " " << guessCount << std::endl;
 }
 
-void TestWordTree()
-{
-    std::vector< std::string> words;
-    words.push_back("slate");
-    words.push_back("daisy");
-    words.push_back("adieu");
-
-    WordTree tree(words);
-    WordQuery query(5);
-    query.SetMustContain('a');
-    query.SetCantContain(0,'d');
-
-    auto w = tree.Satisfies(query);
-    for (auto ww : w)
-    {
-        std::cout << ww << std::endl;
-    }
-}
+//void TestWordTree()
+//{
+//    std::vector< std::string> words;
+//    words.push_back("slate");
+//    words.push_back("daisy");
+//    words.push_back("adieu");
+//
+//    WordTree tree(words);
+//    WordQuery query(5);
+//    query.SetMustContain('a');
+//    query.SetCantContain(0,'d');
+//
+//    auto w = tree.Satisfies(query);
+//    for (auto ww : w)
+//    {
+//        std::cout << ww << std::endl;
+//    }
+//}
 
 int main(int argc, char *argv[])
 {
