@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <stdint.h>
+#include <vector>
 
 struct WordQuery
 {

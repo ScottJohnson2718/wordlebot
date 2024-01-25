@@ -1,6 +1,7 @@
 
 #include <vector>
 #include <string>
+#include <array>
 
 std::array<float, 26> charFrequency(const std::vector<std::string> &words)
 {
@@ -32,10 +33,10 @@ float entropy( const std::string &word, const std::array<float, 26> &freqs )
     // Only count a character in the word once
     for (char ch : word)
     {
-        int charIndex = ch - 'a';
+        int charIndex = tolower(ch) - 'a';
 
         if ((charMask & (1 << charIndex)) == 0) {
-            float Pi = freqs[ch - 'a'];
+            float Pi = freqs[charIndex];
             e += Pi * std::log2(Pi);
             charMask |= 1 << charIndex;
         }
