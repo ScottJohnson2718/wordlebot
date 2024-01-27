@@ -6,6 +6,7 @@
 #include <string>
 #include <algorithm>
 #include <random>
+#include <execution>
 
 #include "WordQuery.h"
 //#include "WordTree.h"
@@ -14,7 +15,29 @@
 using ScoredGuess = std::pair< std::string, float >;
 using FrequencyTable = std::array<float, 26>;
 
-enum CharScore { NotPresent, Correct, CorrectNotHere };
+enum CharScore { NotPresent = 1, Correct = 2, CorrectNotHere = 3 };
+
+// An array of CharScore but put into bits in a uint32_t
+struct ScoredWord
+{
+    void Set(int index, CharScore cs)
+    {
+        v |= cs << (index << 1);
+    }
+
+    CharScore Get(int index) const
+    {
+        index <<= 1;
+        return static_cast<CharScore>((v >> index) & 3);
+    }
+
+    CharScore operator[](int index) const
+    {
+        return Get(index);
+    }
+
+    uint32_t v = 0;
+};
 
 uint32_t ComputeMask( const std::string &word)
 {
@@ -30,16 +53,16 @@ uint32_t ComputeMask( const std::string &word)
     return mask;
 }
 
-std::vector<CharScore> Score( const std::string &solution, const std::string &guess)
+ScoredWord Score(const std::string& solution, const std::string& guess)
 {
-    std::vector<CharScore> score;
+    ScoredWord score;
     uint32_t solutionMask = ComputeMask(solution);
 
     for (int i = 0; i < solution.size(); ++i)
     {
         if (guess[i] == solution[i])
         {
-            score.push_back( Correct );
+            score.Set(i, Correct);
         }
         else
         {
@@ -47,52 +70,56 @@ std::vector<CharScore> Score( const std::string &solution, const std::string &gu
 
             if (charMask & solutionMask)
             {
-                score.push_back(CorrectNotHere);
+                score.Set(i, CorrectNotHere);
             }
             else
             {
-                score.push_back(NotPresent);
+                score.Set(i, NotPresent);
             }
         }
     }
     return score;
 }
 
-
+// This is a Wordle board with the guesses and how
+// they were scored.
 struct Board
 {
-    int n;
+    int n;  // number of characters in each guess
     Board() = default;
     Board(int lettersPerWord)
     : n(lettersPerWord)
     {
     }
 
-    void PushScoredGuess(std::string const &guessStr, const std::vector<CharScore>& score)
+    void PushScoredGuess(std::string const &guessStr, ScoredWord& score)
     {
         guesses.push_back(guessStr);
         scores.push_back(score);
     }
 
+    // This takes a guess such as "slate" and a score string such as "sL..E",
+    // and turns the score string into an actual score the bot can use.
+    // Then it adds the guess and the score to the board.
     void PushScoredGuess(std::string const &guessStr, const std::string& scoreStr)
     {
-        std::vector<CharScore> score;
+        ScoredWord score;
         for (size_t i = 0; i < guessStr.size(); ++i)
         {
             char ch = scoreStr[i];
             if (ch == '.')
             {
-                score.push_back(NotPresent);
+                score.Set(i, NotPresent);
             }
             else
             {
                 if (ch >= 'A' && ch <= 'Z')
                 {
-                    score.push_back( CorrectNotHere);
+                    score.Set(i, CorrectNotHere);
                 }
                 else if (ch >= 'a' && ch <= 'z')
                 {
-                    score.push_back( Correct);
+                    score.Set(i,  Correct);
                 }
             }
         }
@@ -106,6 +133,8 @@ struct Board
         scores.pop_back();
     }
 
+    // Go through all the user guesses and how they were scored and 
+    // create a query that can be used to see which words meet the conditions.
     WordQuery GenerateQuery() const
     {
         WordQuery query(n);
@@ -117,14 +146,14 @@ struct Board
             // For instance, "moony" was scored "..oN." which says there is no 'o'
             // but there is an 'o' in the third position
 
-            for (int charIndex = 0; charIndex < score.size(); ++charIndex)
+            for (int charIndex = 0; charIndex < n; ++charIndex)
             {
                 CharScore scoreChar = score[charIndex];
                 if (scoreChar == Correct)
                     query.SetCorrect( charIndex, guess[charIndex]);
             }
             uint32_t correctMask = ComputeMask(query.correct);
-            for (int charIndex = 0; charIndex < score.size(); ++charIndex)
+            for (int charIndex = 0; charIndex < n; ++charIndex)
             {
                 CharScore scoreChar = score[charIndex];
                 uint32_t charMask = (1 << (guess[charIndex] - 'a'));
@@ -145,7 +174,7 @@ struct Board
     }
 
     std::vector< std::string> guesses;
-    std::vector< std::vector<CharScore> > scores;
+    std::vector< ScoredWord > scores;
 };
 
 
@@ -165,175 +194,236 @@ void LoadDictionary( const std::filesystem::path &filename, std::vector<std::str
     }
 }
 
-struct Bot
+std::vector<std::string>  PruneSearchSpace(const WordQuery& query, const std::vector<std::string>& words)
 {
-    std::vector<std::string> BestGuesses( const WordQuery& query,
-                         const std::vector<std::string> &words,
-                         const std::vector<std::string> &remaining,
-                         size_t &resultingSearchSpaceSize)
+    std::vector<std::string> remaining;
+
+    // Apply the query to each word
+    for (size_t i = 0; i < words.size(); ++i)
     {
-        std::vector<std::string> guesses;
-        if (remaining.size() == 1)
+        if (query.Satisfies(words[i]))
         {
-            resultingSearchSpaceSize = 1;
-            guesses.push_back(remaining[0]);
-            return guesses;
+            remaining.push_back(words[i]);
         }
-        resultingSearchSpaceSize = 1000000;
-        std::string bestGuess;
-
-        // Try the remaining words first
-        for (size_t remainingWordIndex = 0; remainingWordIndex < remaining.size(); ++remainingWordIndex)
-        {
-            WordQuery newQuery(query);
-            const std::string& dictionaryWord = remaining[remainingWordIndex];
-            newQuery.ScoreCandidate(dictionaryWord);
-
-            size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
-            if (searchSpaceSize > 0 && searchSpaceSize < resultingSearchSpaceSize)
-            {
-                resultingSearchSpaceSize = searchSpaceSize;
-                bestGuess = dictionaryWord;
-            }
-        }
-        // Now see if there are any better in the entire dictionary
-        for (size_t dictionaryWordIndex = 0; dictionaryWordIndex < words.size(); ++dictionaryWordIndex)
-        {
-            WordQuery newQuery(query);
-            const std::string& dictionaryWord = words[dictionaryWordIndex];
-            if (dictionaryWord == bestGuess)
-                continue;
-
-            newQuery.ScoreCandidate(dictionaryWord);
-
-            size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
-            if (searchSpaceSize > 0 && searchSpaceSize < resultingSearchSpaceSize)
-            {
-                resultingSearchSpaceSize = searchSpaceSize;
-                bestGuess = dictionaryWord;
-             }
-        }
-        guesses.push_back(bestGuess);
-        // Find words that are just as good as the bestGuess
-        for (size_t dictionaryWordIndex = 0; dictionaryWordIndex < words.size(); ++dictionaryWordIndex)
-        {
-            WordQuery newQuery(query);
-            const std::string& dictionaryWord = words[dictionaryWordIndex];
-            if (dictionaryWord == bestGuess)
-                continue;
-
-            newQuery.ScoreCandidate(dictionaryWord);
-
-            size_t searchSpaceSize = SearchSpaceSize(newQuery, remaining);
-            if (searchSpaceSize > 0 && searchSpaceSize == resultingSearchSpaceSize)
-            {
-                guesses.push_back(dictionaryWord);
-            }
-        }
-        return guesses;
     }
 
-    std::vector<ScoredGuess> BestGuessesWithSearch( Board& board,
-                                          const std::vector<std::string> &words,
-                                          const std::vector<std::string> &remaining)
+    return remaining;
+}
+
+struct Strategy
+{
+
+    // Return the best single guess for the given board
+    virtual ScoredGuess BestGuess(Board& board,
+        const std::vector<std::string>& solutionWords) const = 0;
+
+    // Return a list of the best guesses for the given board.
+    // This is useful in interactive mode when the guessed word
+    // is not in the dictionary of the Wordle app. In that case,
+    // there are alternative words to chose from.
+    virtual std::vector<ScoredGuess> BestGuesses(Board& board,
+        const std::vector<std::string>& solutionWords) const = 0;
+};
+
+// This strategy employs only entropy to chose the next guess given a board.
+struct EntropyStrategy : public Strategy
+{
+    const std::vector<std::string>& guessingWords_;
+    size_t maxGuessesReturned_;
+
+    EntropyStrategy(
+        const std::vector<std::string>& guessingWords, size_t maxGuessesReturned)
+        : guessingWords_(guessingWords)
+        , maxGuessesReturned_(maxGuessesReturned)
+    {
+    }
+
+    virtual ScoredGuess BestGuess(Board& board,
+        const std::vector<std::string>& solutionWords) const
+    {
+        if (solutionWords.size() == 1)
+        {
+            return ScoredGuess(solutionWords[0], 1);
+        }
+
+        ScoredGuess bestGuess;
+        bestGuess.second = 0.0f;
+
+        // Compute the frequency table on the remaining words that satisfy the board
+        FrequencyTable freqs = charFrequency(solutionWords);
+
+        for (const auto& w : guessingWords_)
+        {
+            float ent = entropy(w, freqs);
+            if (ent > bestGuess.second)
+            {
+                bestGuess.first = w;
+                bestGuess.second = ent;
+            }
+        }
+        for (const auto& w : solutionWords)
+        {
+            float ent = entropy(w, freqs);
+            if (ent > bestGuess.second)
+            {
+                bestGuess.first = w;
+                bestGuess.second = ent;
+            }
+        }
+
+        return bestGuess;
+    }
+
+    std::vector<ScoredGuess> BestGuesses(Board& board,
+        const std::vector<std::string>& solutionWords) const
     {
         std::vector<ScoredGuess> guesses;
-        if (remaining.size() == 1)
+        if (solutionWords.size() == 1)
         {
-            guesses.push_back(ScoredGuess(remaining[0], 1));
+            guesses.push_back(ScoredGuess(solutionWords[0], 1));
             return guesses;
         }
 
         // Compute the frequency table on the remaining words that satisfy the board
-        FrequencyTable freqs = charFrequency( remaining);
+        FrequencyTable freqs = charFrequency(solutionWords);
 
         std::vector< ScoredGuess > scoredGuesses;
         std::vector< ScoredGuess > topGuessesByEntropy;
-        std::vector< ScoredGuess > topGuessesBySearchSpace;
 
-        for (const auto &w : remaining)
+        for (const auto& w : guessingWords_)
         {
             float ent = entropy(w, freqs);
-            scoredGuesses.push_back(ScoredGuess( w, ent));
+            scoredGuesses.push_back(ScoredGuess(w, ent));
         }
-        for (const auto &w : words)
+        for (const auto& w : solutionWords)
         {
             float ent = entropy(w, freqs);
-            scoredGuesses.push_back(ScoredGuess( w, ent));
+            scoredGuesses.push_back(ScoredGuess(w, ent));
         }
 
         // Sort by entropy big to small
-         std::sort( scoredGuesses.begin(), scoredGuesses.end(),
-                   []( const ScoredGuess &a, const ScoredGuess &b)
-                   {
-                       return a.second > b.second;
-                   });
+        std::sort(scoredGuesses.begin(), scoredGuesses.end(),
+            [](const ScoredGuess& a, const ScoredGuess& b)
+            {
+                return a.second > b.second;
+            });
 
 
-        std::cout << "Top guesses by entropy" << std::endl;
-        for (int i = 0; i < std::min(10, (int) scoredGuesses.size()); ++i)
-        {
-            std::cout << scoredGuesses[i].first << std::endl;
-        }
-        for (int i = 0; i < std::min(200, (int) scoredGuesses.size()); ++i)
+        for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
         {
             topGuessesByEntropy.push_back(scoredGuesses[i]);
         }
 
-        for (auto const &guess : topGuessesByEntropy)
+        return topGuessesByEntropy;
+    }
+};
+
+///////////////
+
+// This strategy picks the word that reduces the total size of the search space remaining
+struct SearchStrategy : public Strategy
+{
+    SearchStrategy(
+        const std::vector<std::string>& guessingWords, size_t maxGuessesReturned)
+        : guessingWords_(guessingWords)
+        , maxGuessesReturned_(maxGuessesReturned)
+    {
+    }
+
+    ScoredGuess BestGuess(Board& board,
+        const std::vector<std::string>& solutionWords) const
+    {
+        if (solutionWords.size() == 1)
+        {
+            return ScoredGuess(solutionWords[0], 1);
+        }
+
+        // Assumes that the solutionWords have already been pruned by the query
+        // that satisies the board. We only need to make a query with the new guess
+        // because the query for all the previous guesses has already pruned the solution words.
+        Board boardWithJustNewGuess(board.n);
+
+        ScoredGuess bestGuess;
+        bestGuess.second = 1e6;
+
+        for (auto const& guessWord : guessingWords_)
         {
             size_t totalSearchSpaceSize = 0;
-            auto guessWord = guess.first;
+
             // Pretend that each of the remaining words is the solution and
             // see how well the current guess would prune the search space.
-            for (auto const &possibleSolution : remaining)
+            for (auto const& possibleSolution : solutionWords)
             {
                 auto score = Score(possibleSolution, guessWord);
 
-                board.PushScoredGuess(guessWord, score);
-                WordQuery query = board.GenerateQuery();
+                boardWithJustNewGuess.PushScoredGuess(guessWord, score);
+                WordQuery query = boardWithJustNewGuess.GenerateQuery();
 
-                size_t searchSpaceSize = SearchSpaceSize(query, remaining);
+                size_t searchSpaceSize = SearchSpaceSize(query, solutionWords);
                 totalSearchSpaceSize += searchSpaceSize;
 
-                board.Pop();
+                boardWithJustNewGuess.Pop();
             }
-            topGuessesBySearchSpace.push_back( ScoredGuess( guessWord, (float) totalSearchSpaceSize));
+            if (totalSearchSpaceSize < bestGuess.second)
+            {
+                bestGuess.first = guessWord;
+                bestGuess.second = totalSearchSpaceSize;
+            }
+        }
+
+        return bestGuess;
+    }
+
+    std::vector<ScoredGuess> BestGuesses(Board& board,
+        const std::vector<std::string>& solutionWords) const
+    {
+        std::vector<ScoredGuess> guesses;
+        if (solutionWords.size() == 1)
+        {
+            guesses.push_back(ScoredGuess(solutionWords[0], 1));
+            return guesses;
+        }
+
+        std::vector< ScoredGuess > scoredGuesses;
+
+        Board boardWithJustNewGuess(board.n);
+
+        for (auto const& guessWord : guessingWords_)
+        {
+            size_t totalSearchSpaceSize = 0;
+
+            // Pretend that each of the remaining words is the solution and
+            // see how well the current guess would prune the search space.
+            for (auto const& possibleSolution : solutionWords)
+            {
+                auto score = Score(possibleSolution, guessWord);
+
+                boardWithJustNewGuess.PushScoredGuess(guessWord, score);
+                WordQuery query = boardWithJustNewGuess.GenerateQuery();
+
+                size_t searchSpaceSize = SearchSpaceSize(query, solutionWords);
+                totalSearchSpaceSize += searchSpaceSize;
+
+                boardWithJustNewGuess.Pop();
+            }
+            scoredGuesses.push_back(ScoredGuess(guessWord, (float)totalSearchSpaceSize));
         }
 
         // Sort them small to big
-        // Could use nth instead
-        std::sort( topGuessesBySearchSpace.begin(), topGuessesBySearchSpace.end(),
-                   []( const ScoredGuess &a, const ScoredGuess &b)
-                   {
-                        return a.second < b.second;
-                   }
-                   );
-        for (size_t i = 0; i < 20 && i < topGuessesBySearchSpace.size(); ++i)
+        std::sort(scoredGuesses.begin(), scoredGuesses.end(),
+            [](const ScoredGuess& a, const ScoredGuess& b)
+            {
+                return a.second < b.second;
+            }
+        );
+        for (size_t i = 0; i < maxGuessesReturned_ && i < scoredGuesses.size(); ++i)
         {
-            guesses.push_back( topGuessesBySearchSpace[i] );
+            guesses.push_back(scoredGuesses[i]);
         }
         return guesses;
     }
 
-    static
-    std::vector<std::string>  PruneSearchSpace( const WordQuery& query, const std::vector<std::string> &words)
-    {
-        std::vector<std::string> remaining;
-
-        // Apply the query to each word
-        for (size_t i = 0; i < words.size(); ++i)
-        {
-            if (query.Satisfies(words[i]))
-            {
-                remaining.push_back(words[i]);
-            }
-        }
-
-        return remaining;
-    }
-
-    static size_t  SearchSpaceSize( const WordQuery& query, const std::vector<std::string> &words)
+    static size_t  SearchSpaceSize(const WordQuery& query, const std::vector<std::string>& words)
     {
         size_t size(0);
 
@@ -348,42 +438,102 @@ struct Bot
         return size;
     }
 
-    int SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess,
-                     const std::vector<std::string> &words , bool verbose = false)
+    const std::vector<std::string>& guessingWords_;
+    size_t maxGuessesReturned_;
+};
+
+///////////////
+
+// This strategy picks the word that reduces the total size of the search space remaining
+struct BlendedStrategy : public Strategy
+{
+    EntropyStrategy entropyStrategy_;
+    SearchStrategy searchStrategy_;
+
+    BlendedStrategy(
+        const std::vector<std::string>& guessingWords, size_t maxGuessesReturned)
+        : entropyStrategy_(guessingWords, maxGuessesReturned)
+        , searchStrategy_(guessingWords, maxGuessesReturned)
+
+    {
+    }
+
+    ScoredGuess BestGuess(Board& board,
+        const std::vector<std::string>& solutionWords) const
+    {
+        if (solutionWords.size() > 50)
+            return entropyStrategy_.BestGuess(board, solutionWords);
+
+        return searchStrategy_.BestGuess(board, solutionWords);
+    }
+
+    std::vector<ScoredGuess> BestGuesses(Board& board,
+        const std::vector<std::string>& solutionWords) const
+    {
+        if (solutionWords.size() > 50)
+            return entropyStrategy_.BestGuesses(board, solutionWords);
+
+        return searchStrategy_.BestGuesses(board, solutionWords);
+    }
+};
+
+
+// The Wordle Bot. It solves Wordle puzzles.
+struct Bot
+{
+    const std::vector<std::string>& guessingWords_;
+    const std::vector<std::string>& solutionWords_;
+    Strategy& strategy_;
+
+    Bot(const std::vector<std::string>& guessingWords, const std::vector<std::string>& solutionWords, Strategy &strategy)
+        : guessingWords_(guessingWords)
+        , solutionWords_(solutionWords)
+        , strategy_(strategy)
+    {
+    }
+
+    int SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess,bool verbose = false)
     {
         Board board(5);
 
-        return SolvePuzzle(board, hiddenSolution, openingGuess, words, verbose);
+        return SolvePuzzle(board, hiddenSolution, openingGuess, verbose);
     }
 
-    int SolvePuzzle( Board &board, std::string const &hiddenSolution, const std::string &openingGuess,
-                     const std::vector<std::string> &words , bool verbose = false)
+    int SolvePuzzle(Board& board, std::string const& hiddenSolution, const std::string& openingGuess,
+        bool verbose = false)
     {
         if (hiddenSolution == openingGuess)
             return 1;
+        
         // Make the opening guess to reduce the search space right away
         auto firstScore = Score(hiddenSolution, openingGuess);
-
         board.PushScoredGuess( openingGuess, firstScore);
+        WordQuery query = board.GenerateQuery();
+        auto remaining = PruneSearchSpace(query, solutionWords_);
 
         bool solved = false;
         int guessCount = 1;
         std::string previousGuess = openingGuess;
-
+        
         while (!solved) {
-            WordQuery query = board.GenerateQuery();
-            std::vector<std::string> remaining = PruneSearchSpace(query, words);
+            
             if (remaining.size() == 1)
             {
-                // You still need one more guess to make the final guess
-                guessCount++;
                 solved = true;
                 if (verbose)
-                    std::cout << hiddenSolution << " solved in " << guessCount << " guesses" << std::endl;
+                {
+                    std::cout << hiddenSolution << " -> ";
+                    for (auto v : board.guesses)
+                    {
+                        std::cout << v << " ";
+                    }
+                    std::cout << remaining[0] << std::endl;
+                }
+                guessCount++;
                 break;
             }
-            if (verbose)
-                std::cout << "Remaining word count : " << remaining.size() << std::endl;
+            //if (verbose)
+            //    std::cout << "Remaining word count : " << remaining.size() << std::endl;
 
             if (remaining.empty())
             {
@@ -391,54 +541,88 @@ struct Bot
                 board.Pop();
                 return 0;
             }
-            auto guesses = BestGuessesWithSearch(board, words, remaining);
+            // Pick a new guess
+            ScoredGuess guess;
+            
+            guess = strategy_.BestGuess(board, remaining);
+           
 
-            std::string bestGuess;
-            if (guesses.size() > 2 && (guesses[0].first != previousGuess))
+            if (guess.first == previousGuess)
             {
-                // Pick from the list of guesses that most reduce the search space
-                bestGuess = guesses[0].first; // primitive algorithm
+                std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+                return 0;
             }
-            else
-            {
-                // Pick from the remaining list of candidate words
-                bestGuess = remaining[0];
-            }
-            auto score = Score(hiddenSolution, bestGuess);
-            board.PushScoredGuess(bestGuess, score);
 
-            previousGuess = bestGuess;
+            previousGuess = guess.first;
             guessCount++;
             if (guessCount > 10)
             {
                 // Debug runaway condition
-                std::cerr << "Solution word " << hiddenSolution << " guess is " << bestGuess << std::endl;
+                std::cerr << "Solution word " << hiddenSolution << " guess is " << guess.first << std::endl;
                 std::cerr << "previous guess : " << previousGuess << std::endl;
-                std::cerr << guesses.size() << " guesses, " << remaining.size() << " remaining " << std::endl;
+                std::cerr << remaining.size() << " remaining " << std::endl;
             }
+            
+            ScoredWord score = Score(hiddenSolution, guess.first);
+            board.PushScoredGuess(guess.first, score);
+            query = board.GenerateQuery();
+            remaining = PruneSearchSpace(query, remaining);
         }
         board.Pop();
         return guessCount;
     }
 
-    // Return the number of guesses it takes to solve the puzzle with
-    int ScoreGuess( Board &board, std::string const &hiddenSolution, const std::string &guess,
-        const std::vector<std::string> &remaining)
-    {
-        return SolvePuzzle( board, hiddenSolution, guess, remaining);
-    }
 };
 
-void TestWords(std::vector<std::string> &solutionWords, const std::string &openingGuess)
+float TestWords(std::vector<std::string> &solutionWords, const std::vector < std::string>& guessingWords,
+    const std::string &openingGuess, Strategy &strategy)
 {
-    Bot bot;
+    Bot bot(guessingWords, solutionWords, strategy);
 
     int guesses = 0;
-    for (auto const word : solutionWords)
+    std::for_each(std::execution::par_unseq, solutionWords.begin(), solutionWords.end(),
+        [&guesses, &bot, &openingGuess](const std::string& word)
+        {
+            guesses += bot.SolvePuzzle(word, openingGuess, false);
+        });
+    /*for (auto const& word : solutionWords)
     {
-        guesses += bot.SolvePuzzle( word, openingGuess, solutionWords );
-    }
+        guesses += bot.SolvePuzzle( word, openingGuess, true );
+    }*/
     std::cout << "Total guesses for : "<< openingGuess << " " << guesses << std::endl;
+    std::cout << "Ave guesses : " << openingGuess << " " << (double) guesses / (double) solutionWords.size() << std::endl;
+    return (double)guesses / (double)solutionWords.size();
+}
+
+void LoadDictionaries(bool newYorkTimes, int n, 
+    std::vector<std::string>& solutionWords,
+    std::vector<std::string>& guessingWords)
+{
+    if (!newYorkTimes)
+    {
+        if (n == 5)
+        {
+            LoadDictionary("words5_long", guessingWords);
+            LoadDictionary("words5_short", solutionWords);
+            // For Lion Studios, we make one big dictionary and the guessing words and solution
+            // words are actually the same list
+            std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
+            guessingWords = solutionWords;
+        }
+        else if (n == 6)
+        {
+            LoadDictionary("words6", guessingWords);
+            solutionWords = guessingWords;
+        }
+    }
+    else
+    {
+        // For new york times, again, we keep the solution words and the guessing words separate. The solutions
+        // words is a fairly small list.
+        LoadDictionary("words5_long", guessingWords);
+        LoadDictionary("words5_short", solutionWords);
+    }
+
 }
 
 void InteractiveRound(int argc, char *argv[])
@@ -498,48 +682,25 @@ void InteractiveRound(int argc, char *argv[])
     std::vector<std::string> guessingWords;
     std::vector<std::string> solutionWords;
 
-    if (!newYorkTimes)
-    {
-        if (n == 5)
-        {
-            LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
-            LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
-            // For Lion Studios, we make one big dictionary and the guessing words and solution
-            // words are actually the same list
-            std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
-            guessingWords = solutionWords;
-        }
-        else if (n == 6)
-        {
-            LoadDictionary("/Users/scott/words6", guessingWords);
-            solutionWords = guessingWords;
-        }
-    }
-    else
-    {
-        // For new york times, again, we keep the solution words and the guessing words separate. The solutions
-        // words is a fairly small list.
-        LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", guessingWords);
-        LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
-    }
-
+    LoadDictionaries(newYorkTimes, n, solutionWords, guessingWords);
 
     if (newYorkTimes)
         std::cout << "Using New York Times mode" << std::endl;
     else
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
-    Bot bot;
+    BlendedStrategy strategy(guessingWords, 10);
+
     WordQuery query = board.GenerateQuery();
 
-    std::vector<std::string>  remaining = bot.PruneSearchSpace(query, solutionWords);
+    std::vector<std::string>  remaining = PruneSearchSpace(query, solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
     for (auto const &w : remaining)
     {
         std::cout << w << std::endl;
     }
 
-    auto bestGuesses = bot.BestGuessesWithSearch(board, guessingWords, remaining);
+    auto bestGuesses = strategy.BestGuesses(board, remaining);
     std::cout << "Best guesses " << std::endl;
     for (const auto &g : bestGuesses)
     {
@@ -547,48 +708,122 @@ void InteractiveRound(int argc, char *argv[])
     }
 }
 
-void TestOpeningWords()
+void TestEntropy()
 {
     std::vector<std::string> solutionWords;
-    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_short", solutionWords);
-    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
+   
+    solutionWords.push_back("bikes");
+    solutionWords.push_back("hikes");
+    solutionWords.push_back("likes");
 
-    TestWords(solutionWords, "stoae");  // 9659
-    TestWords(solutionWords, "arose");  // 9640
-    TestWords(solutionWords, "limen");  // 9825
-    TestWords(solutionWords, "daisy");  // 9822
+    auto freqs = charFrequency(solutionWords);
+
+    // The conclusion was that entropy alone does not make the correct choice.
+    // The best guess is "bahil" because it differentiates between the choices
+    // but it has less entropy than the others because the 'a' counts for zero.
+    std::cout << "Entropy for guess bahil: " << entropy("bahil", freqs) << std::endl;
+    std::cout << "Entropy for guess bikes: " << entropy("bikes", freqs) << std::endl;
+    std::cout << "Entropy for guess hikes: " << entropy("hikes", freqs) << std::endl;
+}
+void TestOpeningWords()
+{
+    // These dictionaries do not share words between them. We can combine them without making duplicates.
+    std::vector<std::string> guessingWords;
+    std::vector<std::string> solutionWords;
+
+    LoadDictionaries(true, 5, solutionWords, guessingWords);
+    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
+    std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
+
+    BlendedStrategy strategy(guessingWords, 10);
+
+    TestWords(solutionWords, guessingWords, "slate", strategy);  // 9659
+    //TestWords(solutionWords, "stoae");
+    //TestWords(solutionWords, "arose");  // 9640
+    //TestWords(solutionWords, "limen");  // 9825
+    //TestWords(solutionWords, "daisy");  // 9822
+}
+
+void TestStrategy()
+{
+    // These dictionaries do not share words between them. We can combine them without making duplicates.
+    std::vector<std::string> guessingWords;
+    std::vector<std::string> solutionWords;
+
+    LoadDictionaries(true, 5, solutionWords, guessingWords);
+    std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
+    std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
+
+    BlendedStrategy blended(guessingWords, 10);
+    EntropyStrategy entropy(guessingWords, 10);
+
+    float aveGuessesToSolve;
+
+    aveGuessesToSolve = TestWords(solutionWords, guessingWords, "slate", entropy);
+    std::cout << "Ave guesses for entropy only strategy: " << aveGuessesToSolve << std::endl;
+    aveGuessesToSolve = TestWords(solutionWords, guessingWords, "slate", blended);
+    std::cout << "Ave guesses for blended strategy: " << aveGuessesToSolve << std::endl;
 }
 
 // Cable is the solution
 // My bot picked arose, glint, then duchy.
 // belch is better third guess than mine
-void Cable()
+//void Cable()
+//{
+//    std::vector<std::string> words;
+//    std::vector<std::string> remaining;
+//    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", words);
+//    std::cout << "loaded " << words.size() << " words." << std::endl;
+//    std::string solution = "cable";
+//
+//    Bot bot;
+//    Board board(5);
+//    board.PushScoredGuess("arose", Score(solution, "arose"));
+//    board.PushScoredGuess("glint", Score(solution, "glint"));
+//    auto query = board.GenerateQuery();
+//
+//    remaining = bot.PruneSearchSpace(query, words);
+//
+//    std::cout << "Search space size "<< remaining.size() << std::endl;
+//
+//    auto bestGuesses = bot.BestGuessesWithSearch(board, words, remaining);
+//
+//    std::cout << "Best guesses " << std::endl;
+//    for (const auto &g : bestGuesses)
+//    {
+//        std::cout << g.first << " : " << g.second << std::endl;
+//    }
+//   //int guessCount = bot.SolvePuzzle( "cable", "stale", solutionWords, true );
+//    //std::cout << "Total guesses for cable with opening : "<< "stale" << " " << guessCount << std::endl;
+//}
+
+// Word was votes
+// wordlebot guessed " stale tents boric vapid votes
+// Could it do better? tents doesn't seem like a good guess to me.
+void TestSolve()
 {
-    std::vector<std::string> words;
-    std::vector<std::string> remaining;
-    LoadDictionary("/Users/scott/git_repos/wordlebot/words5_long", words);
-    std::cout << "loaded " << words.size() << " words." << std::endl;
-    std::string solution = "cable";
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
 
-    Bot bot;
-    Board board(5);
-    board.PushScoredGuess("arose", Score(solution, "arose"));
-    board.PushScoredGuess("glint", Score(solution, "glint"));
-    auto query = board.GenerateQuery();
+    LoadDictionaries(true, 5, solutionWords, guessingWords);
 
-    remaining = bot.PruneSearchSpace(query, words);
+    BlendedStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy);
 
-    std::cout << "Search space size "<< remaining.size() << std::endl;
+    bot.SolvePuzzle("votes", "stale", true);
+}
 
-    auto bestGuesses = bot.BestGuessesWithSearch(board, words, remaining);
+void TestJoker()
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
 
-    std::cout << "Best guesses " << std::endl;
-    for (const auto &g : bestGuesses)
-    {
-        std::cout << g.first << " : " << g.second << std::endl;
-    }
-   //int guessCount = bot.SolvePuzzle( "cable", "stale", solutionWords, true );
-    //std::cout << "Total guesses for cable with opening : "<< "stale" << " " << guessCount << std::endl;
+    LoadDictionaries(true, 5, solutionWords, guessingWords);
+
+    BlendedStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy);
+
+    bot.SolvePuzzle("joker", "stale", true);
 }
 
 //void TestWordTree()
@@ -612,13 +847,15 @@ void Cable()
 
 int main(int argc, char *argv[])
 {
+    //TestSolve();
+    //TestEntropy();
     //TestOpeningWords();
+    //TestJoker();
+    TestStrategy();
     //TestWordTree();
-    InteractiveRound(argc, argv);
+    //InteractiveRound(argc, argv);
     //Cable();
     return 0;
 }
 
-// Word was votes
-// wordlebot guessed " stale tents boric vapid votes
-// Could it do better? tents doesn't seem like a good guess to me.
+

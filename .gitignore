@@ -1,0 +1,11 @@
+**/build/
+**/.vscode/
+**/.vs/
+**/.idea/
+**/cmake-*/
+**/out/
+**/.svn/
+**/vcpkg_installed
+
+
+

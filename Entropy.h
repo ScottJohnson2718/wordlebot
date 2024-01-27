@@ -14,8 +14,8 @@ std::array<float, 26> charFrequency(const std::vector<std::string> &words)
         {
             char lower = tolower(ch);
             counts[ lower - 'a']++;
-            totalChars++;
         }
+        totalChars += word.size();
     }
     std::array<float, 26> freq;
     for (size_t i = 0; i < counts.size(); ++i)
@@ -37,7 +37,10 @@ float entropy( const std::string &word, const std::array<float, 26> &freqs )
 
         if ((charMask & (1 << charIndex)) == 0) {
             float Pi = freqs[charIndex];
-            e += Pi * std::log2(Pi);
+            if (Pi > 0.0f)
+            {
+                e += Pi * std::log2(Pi);
+            }
             charMask |= 1 << charIndex;
         }
     }
