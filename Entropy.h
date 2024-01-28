@@ -25,6 +25,20 @@ std::array<float, 26> charFrequency(const std::vector<std::string> &words)
     return freq;
 }
 
+std::array<float, 26> removeKnownChars(const std::array<float, 26> &freq, const std::string &contains)
+{
+    std::array<float, 26> f(freq);
+    for (char ch : contains)
+    {
+        if (ch != '.')
+        {
+            int charIndex = tolower(ch) - 'a';
+            f[charIndex] = 0.0f;
+        }
+    }
+    return f;
+}
+
 float entropy( const std::string &word, const std::array<float, 26> &freqs )
 {
     float e = 0.0f;

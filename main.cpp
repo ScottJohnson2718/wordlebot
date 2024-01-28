@@ -252,6 +252,9 @@ struct EntropyStrategy : public Strategy
         // Compute the frequency table on the remaining words that satisfy the board
         FrequencyTable freqs = charFrequency(solutionWords);
 
+        WordQuery query = board.GenerateQuery();
+        freqs = removeKnownChars(freqs, query.correct);
+
         for (const auto& w : guessingWords_)
         {
             float ent = entropy(w, freqs);
@@ -286,6 +289,9 @@ struct EntropyStrategy : public Strategy
 
         // Compute the frequency table on the remaining words that satisfy the board
         FrequencyTable freqs = charFrequency(solutionWords);
+
+        WordQuery query = board.GenerateQuery();
+        freqs = removeKnownChars(freqs, query.correct);
 
         std::vector< ScoredGuess > scoredGuesses;
         std::vector< ScoredGuess > topGuessesByEntropy;
@@ -461,7 +467,7 @@ struct BlendedStrategy : public Strategy
     ScoredGuess BestGuess(Board& board,
         const std::vector<std::string>& solutionWords) const
     {
-        if (solutionWords.size() > 50)
+        if (solutionWords.size() > 99)
             return entropyStrategy_.BestGuess(board, solutionWords);
 
         return searchStrategy_.BestGuess(board, solutionWords);
@@ -470,7 +476,7 @@ struct BlendedStrategy : public Strategy
     std::vector<ScoredGuess> BestGuesses(Board& board,
         const std::vector<std::string>& solutionWords) const
     {
-        if (solutionWords.size() > 50)
+        if (solutionWords.size() > 99)
             return entropyStrategy_.BestGuesses(board, solutionWords);
 
         return searchStrategy_.BestGuesses(board, solutionWords);
@@ -580,15 +586,15 @@ float TestWords(std::vector<std::string> &solutionWords, const std::vector < std
     Bot bot(guessingWords, solutionWords, strategy);
 
     int guesses = 0;
-    std::for_each(std::execution::par_unseq, solutionWords.begin(), solutionWords.end(),
-        [&guesses, &bot, &openingGuess](const std::string& word)
-        {
-            guesses += bot.SolvePuzzle(word, openingGuess, false);
-        });
-    /*for (auto const& word : solutionWords)
+    //std::for_each(std::execution::, solutionWords.begin(), solutionWords.end(),
+    //    [&guesses, &bot, &openingGuess](const std::string& word)
+    //    {
+    //        guesses += bot.SolvePuzzle(word, openingGuess, false);
+    //    });
+    for (auto const& word : solutionWords)
     {
-        guesses += bot.SolvePuzzle( word, openingGuess, true );
-    }*/
+        guesses += bot.SolvePuzzle( word, openingGuess, false );
+    }
     std::cout << "Total guesses for : "<< openingGuess << " " << guesses << std::endl;
     std::cout << "Ave guesses : " << openingGuess << " " << (double) guesses / (double) solutionWords.size() << std::endl;
     return (double)guesses / (double)solutionWords.size();
@@ -717,6 +723,8 @@ void TestEntropy()
     solutionWords.push_back("likes");
 
     auto freqs = charFrequency(solutionWords);
+
+    freqs = removeKnownChars(freqs, ".ikes");
 
     // The conclusion was that entropy alone does not make the correct choice.
     // The best guess is "bahil" because it differentiates between the choices
@@ -851,11 +859,16 @@ int main(int argc, char *argv[])
     //TestEntropy();
     //TestOpeningWords();
     //TestJoker();
-    TestStrategy();
+    //TestStrategy();
     //TestWordTree();
-    //InteractiveRound(argc, argv);
+    InteractiveRound(argc, argv);
     //Cable();
     return 0;
 }
 
-
+// Idea : a new strategy that uses entropy but removes all the known letters from consideration.
+// The entropy is only considered across the unknown letters. Right now, the entropy strategy
+// is wasting letters. Entropy is just a correlation of a word with the letters in the collection
+// of all the words. So the entropy strategy is reguessing letters it already knows.
+// This is easily done by zeroing out the chars in the charFrequency that are already known.
+// But in order to get the characters into the known list, those chars must have already been guessed!
