@@ -538,8 +538,8 @@ struct Bot
                 guessCount++;
                 break;
             }
-            //if (verbose)
-            //    std::cout << "Remaining word count : " << remaining.size() << std::endl;
+            if (verbose)
+                std::cout << "Remaining word count : " << remaining.size() << std::endl;
 
             if (remaining.empty())
             {
@@ -556,9 +556,12 @@ struct Bot
             if (guess.first == previousGuess)
             {
                 std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+                std::cerr << "Guessed " << guess.first << " twice in a row." << std::endl;
                 return 0;
             }
 
+            if (verbose)
+                std::cout << "Best guess : " << guess.first << std::endl;
             previousGuess = guess.first;
             guessCount++;
             if (guessCount > 10)
@@ -834,6 +837,19 @@ void TestJoker()
     bot.SolvePuzzle("joker", "stale", true);
 }
 
+void TestGlobe()
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    LoadDictionaries(false, 5, solutionWords, guessingWords);
+
+    BlendedStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy);
+
+    bot.SolvePuzzle("globe", "stale", true);
+}
+
 //void TestWordTree()
 //{
 //    std::vector< std::string> words;
@@ -855,13 +871,14 @@ void TestJoker()
 
 int main(int argc, char *argv[])
 {
+    TestGlobe();
     //TestSolve();
     //TestEntropy();
     //TestOpeningWords();
     //TestJoker();
     //TestStrategy();
     //TestWordTree();
-    InteractiveRound(argc, argv);
+    //InteractiveRound(argc, argv);
     //Cable();
     return 0;
 }
@@ -872,3 +889,5 @@ int main(int argc, char *argv[])
 // of all the words. So the entropy strategy is reguessing letters it already knows.
 // This is easily done by zeroing out the chars in the charFrequency that are already known.
 // But in order to get the characters into the known list, those chars must have already been guessed!
+
+// Is it not using the solution words as guesses?  It missed the solution globe.
