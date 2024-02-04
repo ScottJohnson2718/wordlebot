@@ -29,13 +29,16 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     auto remaining = PruneSearchSpace(query, solutionWords_);
 
     bool solved = false;
-    int guessCount = 1;
     size_t prevRemainingCount = remaining.size();
+    ScoredGuess guess;
+    guess.first = openingGuess;
+    guess.second = 1.0f;    // arbitrary
 
     while (!solved) {
 
-        if (remaining.size() == 1)
+        if (board.guesses.back() == hiddenSolution)
         {
+            // Solved!
             solved = true;
             if (verbose)
             {
@@ -44,47 +47,53 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
                 {
                     std::cout << v << " ";
                 }
-                std::cout << remaining[0] << std::endl;
+                std::cout << std::endl;
             }
-            guessCount++;
             break;
         }
-        //if (verbose)
-        //    std::cout << "Remaining word count : " << remaining.size() << std::endl;
-
         if (remaining.empty())
         {
             std::cerr << "No solution for word " << hiddenSolution << std::endl;
             board.Pop();
             return 0;
         }
-        // Pick a new guess
-        ScoredGuess guess = strategy_.BestGuess(board, remaining);
+        else if (remaining.size() <= 2)
+        {
+            // Just pick the first one
+            solved = false;
+            guess.first = remaining[0];
+            guess.second = 1.0f;
+            prevRemainingCount = remaining.size();
+            if (remaining.size() > 1) {
+                remaining[0] = remaining[1];
+                remaining.pop_back();
+            }
+            ScoredWord score = Score(hiddenSolution, guess.first);
+            board.PushScoredGuess(guess.first, score);
+        }
+        else
+        {
+            // Pick a new guess using the strategy
+            guess = strategy_.BestGuess(board, remaining);
+
+            // Eval the new guess and reduce the search space
+            ScoredWord score = Score(hiddenSolution, guess.first);
+            board.PushScoredGuess(guess.first, score);
+            query = board.GenerateQuery();
+            remaining = PruneSearchSpace(query, remaining);
+
+            // The search space has to always get smaller.
+            if (remaining.size() >= prevRemainingCount)
+            {
+                std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+                std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
+                return 0;
+            }
+            prevRemainingCount = remaining.size();
+        }
 
         //if (verbose)
         //    std::cout << "Best guess : " << guess.first << std::endl;
-        guessCount++;
-        if (guessCount > 10)
-        {
-            // Debug runaway condition
-            std::cerr << "Solution word " << hiddenSolution << " guess is " << guess.first << std::endl;
-            std::cerr << remaining.size() << " remaining " << std::endl;
-        }
-
-        ScoredWord score = Score(hiddenSolution, guess.first);
-        board.PushScoredGuess(guess.first, score);
-        query = board.GenerateQuery();
-        remaining = PruneSearchSpace(query, remaining);
-
-        // The search space has to always get smaller.
-        if (remaining.size() >= prevRemainingCount)
-        {
-            std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
-            std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
-            return 0;
-        }
-        prevRemainingCount = remaining.size();
     }
-    board.Pop();
-    return guessCount;
+    return board.guesses.size();
 }

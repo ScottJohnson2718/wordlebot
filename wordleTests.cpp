@@ -20,6 +20,21 @@ std::filesystem::path dictPath("..");
 std::filesystem::path dictPath("../..");
 #endif
 
+TEST( Wordle, GuessOnFirstTry)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    BlendedStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy);
+
+    int guessCount = bot.SolvePuzzle("joker", "joker", true);
+    EXPECT_EQ( guessCount, 1);
+}
+
 TEST( Wordle, Joker)
 {
     std::vector<std::string> solutionWords;
@@ -32,7 +47,7 @@ TEST( Wordle, Joker)
     Bot bot(guessingWords, solutionWords, strategy);
 
     int guessCount = bot.SolvePuzzle("joker", "stale", true);
-    EXPECT_LE( guessCount, 6);
+    EXPECT_EQ( guessCount, 6);
 }
 
 TEST( Wordle, Globe)
@@ -153,9 +168,10 @@ TEST( Wordle, Strategy)
     EntropyStrategy entropy(guessingWords, 10);
     SearchStrategy search(guessingWords, 10);
 
-    float aveGuesses0 = TestWords(solutionWords, guessingWords, "arose", entropy);
-    float aveGuesses1 = TestWords(solutionWords, guessingWords, "arose", blended);
-    float aveGuesses2 = TestWords(solutionWords, guessingWords, "arose", search);
+    std::string opening = "slate";
+    float aveGuesses0 = TestWords(solutionWords, guessingWords, opening, entropy);
+    float aveGuesses1 = TestWords(solutionWords, guessingWords, opening, blended);
+    float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
 
     std::cout << "Ave guesses for entropy only strategy: " << aveGuesses0 << std::endl;
     std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
@@ -166,10 +182,14 @@ TEST( Wordle, Strategy)
     // Ave guesses for blended strategy: 3.65788
     // Ave guesses for search strategy: 3.65313
 
+    // After handling a remaining size of 2 differently...
+    // Ave guesses for entropy only strategy: 3.65616
+    // Ave guesses for blended strategy: 3.53045
+    // Ave guesses for search strategy: 3.527
     // NYT with arose as starting word
-    // Ave guesses for entropy only strategy: 3.8216
-    // Ave guesses for blended strategy: 3.68251
-    // Ave guesses for search strategy: 3.67732
+    // Ave guesses for entropy only strategy: 3.68812
+    // Ave guesses for blended strategy: 3.58445
+    // Ave guesses for search strategy: 3.57754
 }
 
 TEST( Wordle, TestOpeningWords)
