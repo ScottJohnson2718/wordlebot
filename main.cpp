@@ -72,7 +72,11 @@ int main(int argc, char *argv[])
     std::vector<std::string> guessingWords;
     std::vector<std::string> solutionWords;
 
-    LoadDictionaries(newYorkTimes, n, dictPath, solutionWords, guessingWords);
+    bool loaded = LoadDictionaries(newYorkTimes, n, dictPath, solutionWords, guessingWords);
+    if (!loaded) {
+        std::cerr << "The dictionaries were not found at " << dictPath << std::endl;
+        return -1;
+    }
 
     if (newYorkTimes)
         std::cout << "Using New York Times mode" << std::endl;
