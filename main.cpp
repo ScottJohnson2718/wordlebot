@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
         }
         if (strcmp(argv[tokenIndex], "--dict") == 0)
         {
-            dictPath = argv[tokenIndex] + 1;
+            dictPath = argv[tokenIndex + 1];
             tokenIndex += 2;
             continue;
         }

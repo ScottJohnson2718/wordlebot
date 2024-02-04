@@ -102,6 +102,7 @@ std::vector<ScoredGuess> EntropyStrategy::BestGuesses(Board& board,
 SearchStrategy::SearchStrategy(
             const std::vector<std::string>& guessingWords, size_t maxGuessesReturned)
             : guessingWords_(guessingWords)
+            , maxGuessesReturned_(maxGuessesReturned)
     {
     }
 

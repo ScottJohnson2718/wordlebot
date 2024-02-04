@@ -140,7 +140,7 @@ TEST( Wordle, Strategy)
     BlendedStrategy blended(guessingWords, 10);
     EntropyStrategy entropy(guessingWords, 10);
     SearchStrategy search(guessingWords, 10);
-    
+
     float aveGuesses0 = TestWords(solutionWords, guessingWords, "arose", entropy);
     float aveGuesses1 = TestWords(solutionWords, guessingWords, "arose", blended);
     float aveGuesses2 = TestWords(solutionWords, guessingWords, "arose", search);
