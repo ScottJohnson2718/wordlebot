@@ -80,9 +80,10 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
         if (remaining.size() >= prevRemainingCount)
         {
             std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
-            std::cerr << "Guessed " << guess.first << " twice in a row." << std::endl;
+            std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
             return 0;
         }
+        prevRemainingCount = remaining.size();
     }
     board.Pop();
     return guessCount;

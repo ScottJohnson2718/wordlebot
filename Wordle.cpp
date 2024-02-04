@@ -4,9 +4,10 @@
 
 #include "WordQuery.h"
 
+#include <iostream>
 #include <fstream>
 
-void LoadDictionary( const std::filesystem::path &filename, std::vector<std::string> &words)
+bool LoadDictionary( const std::filesystem::path &filename, std::vector<std::string> &words)
 {
     std::fstream newfile;
     newfile.open(filename,std::ios::in);
@@ -19,6 +20,12 @@ void LoadDictionary( const std::filesystem::path &filename, std::vector<std::str
         }
         newfile.close();
     }
+    else
+    {
+        std::cerr << "Failed to load dictionary " << filename << std::endl;
+        return false;
+    }
+    return true;
 }
 
 std::vector<std::string>  PruneSearchSpace(const WordQuery& query, const std::vector<std::string>& words)
@@ -51,7 +58,7 @@ uint32_t ComputeMask( const std::string &word)
     return mask;
 }
 
-void LoadDictionaries(bool newYorkTimes, int n,
+bool LoadDictionaries(bool newYorkTimes, int n,
                       const std::filesystem::path& dictPath,
                       std::vector<std::string>& solutionWords,
                       std::vector<std::string>& guessingWords)
@@ -65,8 +72,10 @@ void LoadDictionaries(bool newYorkTimes, int n,
     {
         if (n == 5)
         {
-            LoadDictionary(words5_long, guessingWords);
-            LoadDictionary(words5_short, solutionWords);
+            if (!LoadDictionary(words5_long, guessingWords))
+                return false;
+            if (!LoadDictionary(words5_short, solutionWords))
+                return false;
             // For Lion Studios, we make one big dictionary and the guessing words and solution
             // words are actually the same list
             std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
@@ -76,7 +85,8 @@ void LoadDictionaries(bool newYorkTimes, int n,
         {
             std::filesystem::path words6(dictPath);
             words6 /= "words6";
-            LoadDictionary(words6, guessingWords);
+            if (!LoadDictionary(words6, guessingWords))
+                return false;
             solutionWords = guessingWords;
         }
     }
@@ -84,9 +94,11 @@ void LoadDictionaries(bool newYorkTimes, int n,
     {
         // For new york times, again, we keep the solution words and the guessing words separate. The solutions
         // words is a fairly small list.
-        LoadDictionary(words5_long, guessingWords);
-        LoadDictionary(words5_short, solutionWords);
+        if (!LoadDictionary(words5_long, guessingWords))
+            return false;
+        if (!LoadDictionary(words5_short, solutionWords))
+            return false;
     }
-
+    return true;
 }
 

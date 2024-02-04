@@ -9,16 +9,24 @@
 #include "WordleBot.h"
 
 #include <algorithm>
+#ifndef __APPLE__
+// Apple CLANG does not have <execution> as of 2/2024
 #include <execution>
+#endif
 
+#ifdef __APPLE__
+std::filesystem::path dictPath("..");
+#else
 std::filesystem::path dictPath("../..");
+#endif
 
 TEST( Wordle, Joker)
 {
     std::vector<std::string> solutionWords;
     std::vector<std::string> guessingWords;
 
-    LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
 
     BlendedStrategy strategy(guessingWords, 10);
     Bot bot(guessingWords, solutionWords, strategy);
@@ -32,8 +40,8 @@ TEST( Wordle, Globe)
     std::vector<std::string> solutionWords;
     std::vector<std::string> guessingWords;
 
-    LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
-
+    bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
     BlendedStrategy strategy(guessingWords, 10);
     Bot bot(guessingWords, solutionWords, strategy);
 
@@ -111,16 +119,20 @@ float TestWords(std::vector<std::string> &solutionWords, const std::vector < std
     Bot bot(guessingWords, solutionWords, strategy);
 
     int guesses = 0;
-#ifdef WIN32
+#ifndef __APPLE__
     auto policy = std::execution::par_unseq;
-#else
-    auto policy = std::execution::seq;
-#endif
     std::for_each(policy, solutionWords.begin(), solutionWords.end(),
                   [&guesses, &bot, &openingGuess](const std::string& word)
                   {
                       guesses += bot.SolvePuzzle(word, openingGuess, true);
                   });
+#else
+    std::for_each(solutionWords.begin(), solutionWords.end(),
+                  [&guesses, &bot, &openingGuess](const std::string& word)
+                  {
+                      guesses += bot.SolvePuzzle(word, openingGuess, true);
+                  });
+#endif
 
     std::cout << "Total guesses for : "<< openingGuess << " " << guesses << std::endl;
     std::cout << "Ave guesses : " << openingGuess << " " << (double) guesses / (double) solutionWords.size() << std::endl;
