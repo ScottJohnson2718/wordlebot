@@ -18,6 +18,7 @@ std::vector<std::string>  PruneSearchSpace(const WordQuery& query, const std::ve
 uint32_t ComputeMask( const std::string &word);
 
 void LoadDictionaries(bool newYorkTimes, int n,
+                      const std::filesystem::path &dictPath,    // dictionary directory
                       std::vector<std::string>& solutionWords,
                       std::vector<std::string>& guessingWords);
 

@@ -30,7 +30,7 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
 
     bool solved = false;
     int guessCount = 1;
-    std::string previousGuess = openingGuess;
+    size_t prevRemainingCount = remaining.size();
 
     while (!solved) {
 
@@ -49,8 +49,8 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
             guessCount++;
             break;
         }
-        if (verbose)
-            std::cout << "Remaining word count : " << remaining.size() << std::endl;
+        //if (verbose)
+        //    std::cout << "Remaining word count : " << remaining.size() << std::endl;
 
         if (remaining.empty())
         {
@@ -59,27 +59,15 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
             return 0;
         }
         // Pick a new guess
-        ScoredGuess guess;
+        ScoredGuess guess = strategy_.BestGuess(board, remaining);
 
-        guess = strategy_.BestGuess(board, remaining);
-
-
-        if (guess.first == previousGuess)
-        {
-            std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
-            std::cerr << "Guessed " << guess.first << " twice in a row." << std::endl;
-            return 0;
-        }
-
-        if (verbose)
-            std::cout << "Best guess : " << guess.first << std::endl;
-        previousGuess = guess.first;
+        //if (verbose)
+        //    std::cout << "Best guess : " << guess.first << std::endl;
         guessCount++;
         if (guessCount > 10)
         {
             // Debug runaway condition
             std::cerr << "Solution word " << hiddenSolution << " guess is " << guess.first << std::endl;
-            std::cerr << "previous guess : " << previousGuess << std::endl;
             std::cerr << remaining.size() << " remaining " << std::endl;
         }
 
@@ -87,6 +75,14 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
         board.PushScoredGuess(guess.first, score);
         query = board.GenerateQuery();
         remaining = PruneSearchSpace(query, remaining);
+
+        // The search space has to always get smaller.
+        if (remaining.size() >= prevRemainingCount)
+        {
+            std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+            std::cerr << "Guessed " << guess.first << " twice in a row." << std::endl;
+            return 0;
+        }
     }
     board.Pop();
     return guessCount;

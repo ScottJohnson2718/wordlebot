@@ -52,15 +52,21 @@ uint32_t ComputeMask( const std::string &word)
 }
 
 void LoadDictionaries(bool newYorkTimes, int n,
+                      const std::filesystem::path& dictPath,
                       std::vector<std::string>& solutionWords,
                       std::vector<std::string>& guessingWords)
 {
+    std::filesystem::path words5_long(dictPath);
+    std::filesystem::path words5_short(dictPath);
+    words5_long /= "words5_long";
+    words5_short /= "words5_short";
+
     if (!newYorkTimes)
     {
         if (n == 5)
         {
-            LoadDictionary("words5_long", guessingWords);
-            LoadDictionary("words5_short", solutionWords);
+            LoadDictionary(words5_long, guessingWords);
+            LoadDictionary(words5_short, solutionWords);
             // For Lion Studios, we make one big dictionary and the guessing words and solution
             // words are actually the same list
             std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
@@ -68,7 +74,9 @@ void LoadDictionaries(bool newYorkTimes, int n,
         }
         else if (n == 6)
         {
-            LoadDictionary("words6", guessingWords);
+            std::filesystem::path words6(dictPath);
+            words6 /= "words6";
+            LoadDictionary(words6, guessingWords);
             solutionWords = guessingWords;
         }
     }
@@ -76,8 +84,8 @@ void LoadDictionaries(bool newYorkTimes, int n,
     {
         // For new york times, again, we keep the solution words and the guessing words separate. The solutions
         // words is a fairly small list.
-        LoadDictionary("words5_long", guessingWords);
-        LoadDictionary("words5_short", solutionWords);
+        LoadDictionary(words5_long, guessingWords);
+        LoadDictionary(words5_short, solutionWords);
     }
 
 }

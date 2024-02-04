@@ -72,6 +72,7 @@ struct WordQuery
     {
         ch = tolower(ch);
         correct[charIndex] = ch;
+        mustContain |= (1 << (ch - 'a'));
     }
 
     bool Satisfies(const std::string &word) const

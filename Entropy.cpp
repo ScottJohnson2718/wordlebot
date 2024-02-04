@@ -1,6 +1,8 @@
 
 #include "Entropy.h"
 
+#include "WordQuery.h"
+
 std::array<float, 26> charFrequency(const std::vector<std::string> &words)
 {
     std::array<int, 26> counts;
@@ -19,6 +21,33 @@ std::array<float, 26> charFrequency(const std::vector<std::string> &words)
     for (size_t i = 0; i < counts.size(); ++i)
     {
         freq[i] = ((double) counts[i]) / (double) totalChars;
+    }
+    return freq;
+}
+
+// Compute the frequency table of all the letters in the words but don't count the ones that they
+// all have in common based on the given query.
+std::array<float, 26> charFrequency(const std::vector<std::string> &words, const WordQuery &query)
+{
+    std::array<int, 26> counts;
+    counts.fill(0);
+    int totalChars = 0;
+    for (auto const &word : words)
+    {
+        for (char ch : word)
+        {
+            char lower = tolower(ch);
+            uint32_t mask = (1 << (lower - 'a'));
+            if ((query.mustContain & mask) == 0) {
+                counts[lower - 'a']++;
+                totalChars++;
+            }
+        }
+    }
+    std::array<float, 26> freq;
+    for (size_t i = 0; i < counts.size(); ++i)
+    {
+        freq[i] = (totalChars > 0) ? ((double) counts[i]) / (double) totalChars : 1.0f;
     }
     return freq;
 }

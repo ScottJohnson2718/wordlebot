@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     bool newYorkTimes = false;
 
     Board board;
+    std::filesystem::path dictPath(".");
 
     for (int tokenIndex = 1; tokenIndex < argc; )
     {
@@ -36,6 +37,12 @@ int main(int argc, char *argv[])
             newYorkTimes = false;
             n = 6;
             tokenIndex++;
+            continue;
+        }
+        if (strcmp(argv[tokenIndex], "--dict") == 0)
+        {
+            dictPath = argv[tokenIndex] + 1;
+            tokenIndex += 2;
             continue;
         }
 
@@ -65,7 +72,7 @@ int main(int argc, char *argv[])
     std::vector<std::string> guessingWords;
     std::vector<std::string> solutionWords;
 
-    LoadDictionaries(newYorkTimes, n, solutionWords, guessingWords);
+    LoadDictionaries(newYorkTimes, n, dictPath, solutionWords, guessingWords);
 
     if (newYorkTimes)
         std::cout << "Using New York Times mode" << std::endl;

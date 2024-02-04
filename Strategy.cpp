@@ -18,14 +18,16 @@ ScoredGuess EntropyStrategy::BestGuess(Board& board,
         return ScoredGuess(solutionWords[0], 1);
     }
 
-    ScoredGuess bestGuess;
-    bestGuess.second = 0.0f;
-
-    // Compute the frequency table on the remaining words that satisfy the board
-    FrequencyTable freqs = charFrequency(solutionWords);
-
     WordQuery query = board.GenerateQuery();
-    freqs = removeKnownChars(freqs, query.correct);
+    // Compute the frequency table on the remaining words that satisfy the board
+    FrequencyTable freqs = charFrequency(solutionWords, query);
+
+    ScoredGuess bestGuess;
+    if (!solutionWords.empty())
+    {
+        bestGuess.first = solutionWords[0];
+        bestGuess.second = entropy(solutionWords[0], freqs);
+    }
 
     for (const auto& w : guessingWords_)
     {
