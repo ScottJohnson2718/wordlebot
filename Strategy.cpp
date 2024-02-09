@@ -1,6 +1,7 @@
 
 #include "Strategy.h"
 
+#include <iostream>
 
 // This strategy employs only entropy to chose the next guess given a board.
 EntropyStrategy::EntropyStrategy(
@@ -192,10 +193,37 @@ std::vector<ScoredGuess> SearchStrategy::BestGuesses(Board& board,
                   return a.second < b.second;
               }
     );
-    for (size_t i = 0; i < maxGuessesReturned_ && i < scoredGuesses.size(); ++i)
+
+    // Prune the guesses to something reasonable. The list might have started at 10,000
+    for (size_t i = 0; i < 100 && i < scoredGuesses.size(); ++i)
     {
         guesses.push_back(scoredGuesses[i]);
     }
+
+    // prefer the guesses in the solution list.
+    for (auto &g : guesses)
+    {
+        if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
+        {
+            std::cout << "Preferring guess " << g.first << std::endl;
+            g.second -= 0.5f;
+        }
+    }
+
+    // Sort them small to big
+    std::sort(guesses.begin(), guesses.end(),
+              [](const ScoredGuess& a, const ScoredGuess& b)
+              {
+                  return a.second < b.second;
+              }
+    );
+
+    // crude, I know
+    while (guesses.size() > maxGuessesReturned_)
+    {
+        guesses.pop_back();
+    }
+
     return guesses;
 }
 

@@ -94,14 +94,30 @@ int main(int argc, char *argv[])
         std::cout << w << std::endl;
     }
 
-    auto bestGuesses = strategy.BestGuesses(board, remaining);
     std::cout << "Best guesses " << std::endl;
-    for (const auto &g : bestGuesses)
+    if (remaining.size() <= 2)
     {
-        std::cout << g.first << " : " << g.second << std::endl;
+        for (const auto &g : remaining)
+        {
+            std::cout << g << std::endl;
+        }
     }
+    else
+    {
+        auto bestGuesses = strategy.BestGuesses(board, remaining);
+
+        for (const auto &g : bestGuesses)
+        {
+            std::cout << g.first << " : " << g.second << std::endl;
+        }
+    }
+
 }
 
-
+// wordlebot search strategy doesn't favor the solution words as guesses
+// Change Search Strategy to return which guess is most likely the solution.
+// For small search spaces, have it look ahead and do the whole solution tree and return
+// the likelihood of each guess. Try changing SolvePuzzle to return the chance that the given
+// guess is the solution. Or make a new function that returns the chance.
 
 

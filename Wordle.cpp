@@ -99,6 +99,7 @@ bool LoadDictionaries(bool newYorkTimes, int n,
         if (!LoadDictionary(words5_short, solutionWords))
             return false;
     }
+    std::sort( solutionWords.begin(), solutionWords.end());
     return true;
 }
 

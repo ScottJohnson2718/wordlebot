@@ -50,6 +50,21 @@ TEST( Wordle, Joker)
     EXPECT_EQ( guessCount, 6);
 }
 
+TEST( Wordle, Oozed)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    BlendedStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy);
+
+    int guessCount = bot.SolvePuzzle("oozed", "stale", true);
+    EXPECT_EQ( guessCount, 6);
+}
+
 TEST( Wordle, Globe)
 {
     std::vector<std::string> solutionWords;
