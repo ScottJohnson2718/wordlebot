@@ -30,3 +30,6 @@ struct ScoredWord
 };
 
 ScoredWord Score(const std::string& solution, const std::string& guess);
+
+std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);
+

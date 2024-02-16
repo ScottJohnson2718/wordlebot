@@ -88,7 +88,7 @@ std::vector<ScoredGuess> EntropyStrategy::BestGuesses(Board& board,
               {
                   return a.second > b.second;
               });
-
+    guesses.erase( unique( guesses.begin(), guesses.end() ), guesses.end() );
 
     for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
     {
@@ -162,7 +162,6 @@ std::vector<ScoredGuess> SearchStrategy::BestGuesses(Board& board,
     }
 
     std::vector< ScoredGuess > scoredGuesses;
-
     Board boardWithJustNewGuess(board.n);
 
     for (auto const& guessWord : guessingWords_)
@@ -205,8 +204,8 @@ std::vector<ScoredGuess> SearchStrategy::BestGuesses(Board& board,
     {
         if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
         {
-            std::cout << "Preferring guess " << g.first << std::endl;
             g.second -= 0.5f;
+            std::cout << "Preferring guess " << g.first << " : " << g.second << std::endl;
         }
     }
 
@@ -217,6 +216,8 @@ std::vector<ScoredGuess> SearchStrategy::BestGuesses(Board& board,
                   return a.second < b.second;
               }
     );
+    // Remove duplicates
+    guesses.erase( unique( guesses.begin(), guesses.end() ), guesses.end() );
 
     // crude, I know
     while (guesses.size() > maxGuessesReturned_)

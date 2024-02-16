@@ -45,6 +45,16 @@ int main(int argc, char *argv[])
             tokenIndex += 2;
             continue;
         }
+        if (strcmp(argv[tokenIndex], "--score") == 0)
+        {
+            std::string solution = argv[tokenIndex+1];
+            std::string guess = argv[tokenIndex+2];
+            auto scoredWord = Score(solution, guess);
+            std::cout << "Scoring guess " << guess << " against solution " << solution << std::endl;
+            print(std::cout, guess, scoredWord);
+            std::cout << std::endl;
+            return 0;
+        }
 
         std::string guess = argv[tokenIndex];
         std::string score = argv[tokenIndex+1];
@@ -120,4 +130,7 @@ int main(int argc, char *argv[])
 // the likelihood of each guess. Try changing SolvePuzzle to return the chance that the given
 // guess is the solution. Or make a new function that returns the chance.
 
-
+// I keep thinking I'm going to write a strategy that looks ahead moves. There are too many guessing words
+// for that. I either have to prune the guessing words by entropy (?) or prune the whole dictionary of words.
+// I can make a dictionary of guessing words per opening word. So if the opening word is "slate" I can load
+// slate.txt and use only the guessing words that are selected for some solution word.

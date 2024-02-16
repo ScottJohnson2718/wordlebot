@@ -79,6 +79,11 @@ bool LoadDictionaries(bool newYorkTimes, int n,
             // For Lion Studios, we make one big dictionary and the guessing words and solution
             // words are actually the same list
             std::copy(guessingWords.begin(), guessingWords.end(), std::back_inserter(solutionWords));
+
+            // sort and remove duplicates
+            sort( solutionWords.begin(), solutionWords.end() );
+            solutionWords.erase( unique( solutionWords.begin(), solutionWords.end() ), solutionWords.end() );
+
             guessingWords = solutionWords;
         }
         else if (n == 6)
@@ -95,7 +100,7 @@ bool LoadDictionaries(bool newYorkTimes, int n,
         // For new york times, again, we keep the solution words and the guessing words separate. The solutions
         // words is a fairly small list.
         if (!LoadDictionary(words5_long, guessingWords))
-            return false;
+           return false;
         if (!LoadDictionary(words5_short, solutionWords))
             return false;
     }

@@ -28,3 +28,26 @@ ScoredWord Score(const std::string& solution, const std::string& guess)
     }
     return score;
 }
+
+std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored)
+{
+    for (int i = 0; i < guess.size(); ++i)
+    {
+        CharScore cs = scored.Get(i);
+        char ch = guess[i];
+
+        switch (cs)
+        {
+            case NotPresent:
+                str << ".";
+                break;
+            case Correct :
+                str << ch;
+                break;
+            case CorrectNotHere :
+                str << (char) toupper(ch);
+                break;
+        }
+    }
+    return str;
+}

@@ -7,6 +7,7 @@
 #include "Board.h"
 #include "Strategy.h"
 #include "WordleBot.h"
+#include "ScoredWord.h"
 
 #include <algorithm>
 #ifndef __APPLE__
@@ -29,9 +30,9 @@ TEST( Wordle, GuessOnFirstTry)
     ASSERT_TRUE(loaded);
 
     BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("joker", "joker", true);
+    int guessCount = bot.SolvePuzzle("joker", "joker");
     EXPECT_EQ( guessCount, 1);
 }
 
@@ -44,9 +45,9 @@ TEST( Wordle, Joker)
     ASSERT_TRUE(loaded);
 
     BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("joker", "stale", true);
+    int guessCount = bot.SolvePuzzle("joker", "stale");
     EXPECT_EQ( guessCount, 6);
 }
 
@@ -59,9 +60,9 @@ TEST( Wordle, Oozed)
     ASSERT_TRUE(loaded);
 
     BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("oozed", "stale", true);
+    int guessCount = bot.SolvePuzzle("oozed", "stale");
     EXPECT_EQ( guessCount, 6);
 }
 
@@ -73,11 +74,39 @@ TEST( Wordle, Globe)
     bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
     BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("globe", "stale", true);
+    int guessCount = bot.SolvePuzzle("globe", "stale");
     EXPECT_NE( guessCount, 0);
     EXPECT_LE( guessCount, 6);
+}
+
+TEST( Score, Scram)
+{
+    auto scoredWord = Score("scram", "trace");
+    std::stringstream str;
+    print(str, "trace", scoredWord);
+    EXPECT_EQ( str.str(), std::string(".RAC."));
+}
+
+TEST( RemoveDups, Test1)
+{
+    std::vector< ScoredGuess > guesses;
+
+    guesses.push_back( ScoredGuess{"octary", 1.89719f});
+    guesses.push_back( ScoredGuess{"costar", 1.93545});
+    guesses.push_back( ScoredGuess{"octary", 1.89719f});
+    guesses.push_back( ScoredGuess{"octary", 1.89719f});
+
+    std::sort(guesses.begin(), guesses.end(),
+              [](const ScoredGuess& a, const ScoredGuess& b)
+              {
+                  return a.second > b.second;
+              });
+
+    // Remove duplicates (didn't work)
+    guesses.erase( unique( guesses.begin(), guesses.end() ), guesses.end() );
+    EXPECT_EQ( guesses.size(), 2);
 }
 
 TEST( Wordle, Abode)
@@ -88,9 +117,9 @@ TEST( Wordle, Abode)
     LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
 
     EntropyStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("abode", "stale", true);
+    int guessCount = bot.SolvePuzzle("abode", "stale");
     EXPECT_NE( guessCount, 0);
     EXPECT_LE( guessCount, 6);
 }
@@ -106,9 +135,9 @@ TEST( Wordle, Votes)
     LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
 
     BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("votes", "stale", true);
+    int guessCount = bot.SolvePuzzle("votes", "stale");
     EXPECT_NE( guessCount, 0);
     EXPECT_LE( guessCount, 6);
 }
@@ -146,7 +175,7 @@ TEST(Wordle, Entropy)
 float TestWords(std::vector<std::string> &solutionWords, const std::vector < std::string>& guessingWords,
                 const std::string &openingGuess, Strategy &strategy)
 {
-    Bot bot(guessingWords, solutionWords, strategy);
+    Bot bot(guessingWords, solutionWords, strategy, true);
 
     int guesses = 0;
 #ifndef __APPLE__
@@ -160,7 +189,7 @@ float TestWords(std::vector<std::string> &solutionWords, const std::vector < std
     std::for_each(solutionWords.begin(), solutionWords.end(),
                   [&guesses, &bot, &openingGuess](const std::string& word)
                   {
-                      guesses += bot.SolvePuzzle(word, openingGuess, true);
+                      guesses += bot.SolvePuzzle(word, openingGuess);
                   });
 #endif
 

@@ -2,22 +2,24 @@
 
 #include "WordleBot.h"
 
-Bot::Bot(const std::vector<std::string>& guessingWords, const std::vector<std::string>& solutionWords, Strategy &strategy)
+Bot::Bot(const std::vector<std::string>& guessingWords,
+         const std::vector<std::string>& solutionWords,
+         Strategy &strategy, bool verbose)
         : guessingWords_(guessingWords)
         , solutionWords_(solutionWords)
         , strategy_(strategy)
+        , verbose_(verbose)
 {
 }
 
-int Bot::SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess,bool verbose)
+int Bot::SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess)
 {
     Board board(5);
 
-    return SolvePuzzle(board, hiddenSolution, openingGuess, verbose);
+    return SolvePuzzle(board, hiddenSolution, openingGuess);
 }
 
-int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std::string& openingGuess,
-                bool verbose)
+int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std::string& openingGuess)
 {
     if (hiddenSolution == openingGuess)
         return 1;
@@ -34,13 +36,13 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     guess.first = openingGuess;
     guess.second = 1.0f;    // arbitrary
 
-    while (!solved) {
-
+    while (!solved)
+    {
         if (board.guesses.back() == hiddenSolution)
         {
             // Solved!
             solved = true;
-            if (verbose)
+            if (verbose_)
             {
                 std::cout << hiddenSolution << " -> ";
                 for (auto v : board.guesses)
@@ -97,3 +99,9 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     }
     return board.guesses.size();
 }
+
+
+//int Bot::SolvePuzzleRecurse( std::string &hiddienSolution, const std::vector<std::string>& remaining)
+//{
+//
+//}

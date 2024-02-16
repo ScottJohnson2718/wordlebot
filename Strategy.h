@@ -50,7 +50,7 @@ struct SearchStrategy : public Strategy
                                          const std::vector<std::string>& solutionWords) const;
 
 
-    static size_t  SearchSpaceSize(const WordQuery& query, const std::vector<std::string>& words);
+    static size_t  SearchSpaceSize(const WordQuery& query, const std::vector<std::string>& solutions);
 
     const std::vector<std::string>& guessingWords_;
     size_t maxGuessesReturned_;
