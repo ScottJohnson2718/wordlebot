@@ -16,7 +16,7 @@ struct Board
     Board() = default;
     Board(int lettersPerWord);
 
-    void PushScoredGuess(std::string const &guessStr, ScoredWord& score);
+    void PushScoredGuess(std::string const &guessStr, const ScoredWord& score);
 
     // This takes a guess such as "slate" and a score string such as "sL..E",
     // and turns the score string into an actual score the bot can use.

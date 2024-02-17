@@ -23,7 +23,7 @@ add_library(WordleLib STATIC
         Entropy.h
         Strategy.cpp Strategy.h
         WordleBot.cpp WordleBot.h
-        Entropy.cpp)
+        Entropy.cpp LookaheadStrategy.cpp LookaheadStrategy.h)
 
 add_executable(wordlebot main.cpp)
 target_link_libraries(wordlebot PUBLIC WordleLib )

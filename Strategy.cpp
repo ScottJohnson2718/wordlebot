@@ -62,11 +62,9 @@ std::vector<ScoredGuess> EntropyStrategy::BestGuesses(Board& board,
         return guesses;
     }
 
-    // Compute the frequency table on the remaining words that satisfy the board
-    FrequencyTable freqs = charFrequency(solutionWords);
-
     WordQuery query = board.GenerateQuery();
-    freqs = removeKnownChars(freqs, query.correct);
+    // Compute the frequency table on the remaining words that satisfy the board
+    FrequencyTable freqs = charFrequency(solutionWords, query);
 
     std::vector< ScoredGuess > scoredGuesses;
     std::vector< ScoredGuess > topGuessesByEntropy;

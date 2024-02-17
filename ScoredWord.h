@@ -26,6 +26,11 @@ struct ScoredWord
         return Get(index);
     }
 
+    bool operator <(const ScoredWord &s) const
+    {
+        return v  < s.v;
+    }
+
     uint32_t v = 0;
 };
 

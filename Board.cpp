@@ -9,7 +9,7 @@ Board::Board(int lettersPerWord)
 {
 }
 
-void Board::PushScoredGuess(std::string const &guessStr, ScoredWord& score)
+void Board::PushScoredGuess(std::string const &guessStr, const ScoredWord& score)
 {
     guesses.push_back(guessStr);
     scores.push_back(score);

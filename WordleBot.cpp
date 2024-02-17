@@ -1,6 +1,9 @@
 
 
 #include "WordleBot.h"
+#include "ScoredWord.h"
+
+#include <map>
 
 Bot::Bot(const std::vector<std::string>& guessingWords,
          const std::vector<std::string>& solutionWords,
@@ -30,18 +33,39 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     WordQuery query = board.GenerateQuery();
     auto remaining = PruneSearchSpace(query, solutionWords_);
 
-    bool solved = false;
-    size_t prevRemainingCount = remaining.size();
-    ScoredGuess guess;
-    guess.first = openingGuess;
-    guess.second = 1.0f;    // arbitrary
+    return SolvePuzzle(board, hiddenSolution, remaining);
+}
 
-    while (!solved)
+int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std::vector<std::string>& remainingSolutions)
+{
+    ScoredGuess guess;
+    size_t prevRemainingCount(remainingSolutions.size());
+    std::vector<std::string> remaining = remainingSolutions;
+
+    while (true)
     {
+        // Pick a new guess using the strategy
+        guess = strategy_.BestGuess(board, remaining);
+        if (verbose_)
+            std::cout << "Best guess : " << guess.first << std::endl;
+
+        // Eval the new guess and reduce the search space
+        ScoredWord score = Score(hiddenSolution, guess.first);
+        board.PushScoredGuess(guess.first, score);
+        WordQuery query = board.GenerateQuery();
+        remaining = PruneSearchSpace(query, remaining);
+
+        // The search space has to always get smaller.
+        if (remaining.size() >= prevRemainingCount)
+        {
+            std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+            std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
+            return 0;
+        }
+
         if (board.guesses.back() == hiddenSolution)
         {
             // Solved!
-            solved = true;
             if (verbose_)
             {
                 std::cout << hiddenSolution << " -> ";
@@ -56,13 +80,11 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
         if (remaining.empty())
         {
             std::cerr << "No solution for word " << hiddenSolution << std::endl;
-            board.Pop();
             return 0;
         }
         else if (remaining.size() <= 2)
         {
             // Just pick the first one
-            solved = false;
             guess.first = remaining[0];
             guess.second = 1.0f;
             prevRemainingCount = remaining.size();
@@ -73,35 +95,67 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
             ScoredWord score = Score(hiddenSolution, guess.first);
             board.PushScoredGuess(guess.first, score);
         }
-        else
-        {
-            // Pick a new guess using the strategy
-            guess = strategy_.BestGuess(board, remaining);
-
-            // Eval the new guess and reduce the search space
-            ScoredWord score = Score(hiddenSolution, guess.first);
-            board.PushScoredGuess(guess.first, score);
-            query = board.GenerateQuery();
-            remaining = PruneSearchSpace(query, remaining);
-
-            // The search space has to always get smaller.
-            if (remaining.size() >= prevRemainingCount)
-            {
-                std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
-                std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
-                return 0;
-            }
-            prevRemainingCount = remaining.size();
-        }
-
-        //if (verbose)
-        //    std::cout << "Best guess : " << guess.first << std::endl;
     }
     return board.guesses.size();
 }
 
+// Determine the properties of the subtree of the search space
+void Bot::SearchRecurse(Board& board,
+                               const std::vector<std::string>& remainingSolutions,
+                               SearchResult &result) {
 
-//int Bot::SolvePuzzleRecurse( std::string &hiddienSolution, const std::vector<std::string>& remaining)
-//{
-//
-//}
+    if (remainingSolutions.size() == 0)
+    {
+        // Failure. All solutions pruned. The board has a contradiction or the dictionary
+        // doesn't have the solution word.
+        return;
+    }
+    // Count the number of visited states in the search tree
+    result.totalSize++;
+
+    if (remainingSolutions.size() == 1)
+    {
+        // Solved. Don't recurse.
+        result.maxDepth = std::max(result.maxDepth, board.guesses.size());
+        result.minDepth = std::min(result.minDepth, board.guesses.size());
+    }
+    else
+    {
+        // use the strategy to pick the best guess.
+        auto bestScoredGuess = strategy_.BestGuess(board, remainingSolutions);
+        std::string bestGuessWord = bestScoredGuess.first;
+
+        // Note that we picked this word.
+        //result.guessedWords.insert(bestScoredGuess.first);
+
+        // This guess separates the remaining solutions into groups according to a common board score
+        std::map<ScoredWord, std::vector<std::string>> groups;
+        for (auto const &possibleSolution: remainingSolutions)
+        {
+            ScoredWord s = Score(possibleSolution, bestGuessWord);
+            groups[s].push_back(bestGuessWord);
+        }
+
+        // Recurse on the groups of solution words
+        for (const auto &p: groups)
+        {
+            board.PushScoredGuess(bestGuessWord, p.first);
+
+            SearchRecurse(board, p.second, result);
+
+            board.Pop();
+        }
+    }
+}
+
+// Determine the properties of the subtree of the search space
+void Bot::Search(Board& board,
+                        const std::vector<std::string>& remainingSolutions,
+                        SearchResult &result)
+{
+    result.maxDepth = 0;
+    result.minDepth = std::numeric_limits<size_t>::max();
+    result.totalSize = 0;
+    //result.guessedWords.clear();
+    SearchRecurse(board, remainingSolutions, result);
+}
