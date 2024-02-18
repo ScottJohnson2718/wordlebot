@@ -12,7 +12,7 @@
 // This is a Wordle board with the guesses and how they were scored.
 struct Board
 {
-    int n;  // number of characters in each guess
+    int n{5};  // number of characters in each guess
     Board() = default;
     Board(int lettersPerWord);
 

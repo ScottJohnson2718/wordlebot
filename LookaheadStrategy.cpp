@@ -55,7 +55,7 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
             // Do a full search of the remaining space
             slaveBot.Search(board, remaining, result);
 
-            if (minSearchSpace < result.totalSize)
+            if (result.totalSize < minSearchSpace)
             {
                 minSearchSpace = result.totalSize;
                 bestGuess.first = guessWord;
@@ -105,9 +105,12 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
             // Do a full search of the remaining space
             slaveBot.Search(board, solutionWords, result);
 
-            scoredGuesses.push_back( ScoredGuess(guessWord, result.totalSize));
+            scoredGuesses.push_back( ScoredGuess(guessWord, (float) result.totalSize));
         }
     }
+
+    // Remove duplicate guesses by string
+    RemoveDuplicateGuesses(scoredGuesses);
 
     // Sort them small to big
     std::sort(scoredGuesses.begin(), scoredGuesses.end(),
@@ -117,12 +120,12 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
               }
     );
 
-    // Crude. Yikes.
-    while (scoredGuesses.size() > maxGuessesReturned_)
+    std::vector< ScoredGuess > topGuessesByScore;
+    for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
     {
-        scoredGuesses.pop_back();
+        topGuessesByScore.push_back(scoredGuesses[i]);
     }
 
-    return scoredGuesses;
+    return topGuessesByScore;
 }
 

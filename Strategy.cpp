@@ -55,19 +55,18 @@ ScoredGuess EntropyStrategy::BestGuess(Board& board,
 std::vector<ScoredGuess> EntropyStrategy::BestGuesses(Board& board,
                                      const std::vector<std::string>& solutionWords) const
 {
-    std::vector<ScoredGuess> guesses;
+    std::vector< ScoredGuess > scoredGuesses;
     if (solutionWords.size() == 1)
     {
-        guesses.push_back(ScoredGuess(solutionWords[0], 1));
-        return guesses;
+        scoredGuesses.push_back(ScoredGuess(solutionWords[0], 1));
+        return scoredGuesses;
     }
 
     WordQuery query = board.GenerateQuery();
     // Compute the frequency table on the remaining words that satisfy the board
     FrequencyTable freqs = charFrequency(solutionWords, query);
 
-    std::vector< ScoredGuess > scoredGuesses;
-    std::vector< ScoredGuess > topGuessesByEntropy;
+   std::vector< ScoredGuess > topGuessesByEntropy;
 
     for (const auto& w : guessingWords_)
     {
@@ -80,13 +79,15 @@ std::vector<ScoredGuess> EntropyStrategy::BestGuesses(Board& board,
         scoredGuesses.push_back(ScoredGuess(w, ent));
     }
 
-    // Sort by entropy big to small
+    // Remove duplicate guesses by string
+    RemoveDuplicateGuesses(scoredGuesses);
+
+    // Sort by score big to small
     std::sort(scoredGuesses.begin(), scoredGuesses.end(),
               [](const ScoredGuess& a, const ScoredGuess& b)
               {
                   return a.second > b.second;
               });
-    guesses.erase( unique( guesses.begin(), guesses.end() ), guesses.end() );
 
     for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
     {

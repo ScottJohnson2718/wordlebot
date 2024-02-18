@@ -8,6 +8,7 @@
 #include "Strategy.h"
 #include "WordleBot.h"
 #include "ScoredWord.h"
+#include "LookaheadStrategy.h"
 
 #include <algorithm>
 #ifndef __APPLE__
@@ -94,18 +95,12 @@ TEST( RemoveDups, Test1)
     std::vector< ScoredGuess > guesses;
 
     guesses.push_back( ScoredGuess{"octary", 1.89719f});
-    guesses.push_back( ScoredGuess{"costar", 1.93545});
+    guesses.push_back( ScoredGuess{"costar", 1.93545f});
     guesses.push_back( ScoredGuess{"octary", 1.89719f});
     guesses.push_back( ScoredGuess{"octary", 1.89719f});
 
-    std::sort(guesses.begin(), guesses.end(),
-              [](const ScoredGuess& a, const ScoredGuess& b)
-              {
-                  return a.second > b.second;
-              });
+    RemoveDuplicateGuesses(guesses);
 
-    // Remove duplicates (didn't work)
-    guesses.erase( unique( guesses.begin(), guesses.end() ), guesses.end() );
     EXPECT_EQ( guesses.size(), 2);
 }
 
@@ -183,7 +178,7 @@ float TestWords(std::vector<std::string> &solutionWords, const std::vector < std
     std::for_each(policy, solutionWords.begin(), solutionWords.end(),
                   [&guesses, &bot, &openingGuess](const std::string& word)
                   {
-                      guesses += bot.SolvePuzzle(word, openingGuess, true);
+                      guesses += bot.SolvePuzzle(word, openingGuess);
                   });
 #else
     std::for_each(solutionWords.begin(), solutionWords.end(),
@@ -253,6 +248,41 @@ TEST( Wordle, TestOpeningWords)
     //TestWords(solutionWords, "arose");  // 9640
     //TestWords(solutionWords, "limen");  // 9825
     //TestWords(solutionWords, "daisy");  // 9822
+}
+
+TEST( Wordle, SimpleSearch)
+{
+    // Guessing words and solution words are the same for this test
+    std::vector<std::string> solutionWords;
+
+    solutionWords.push_back("bikes");
+    solutionWords.push_back("hikes");
+    solutionWords.push_back("likes");
+    solutionWords.push_back("slate");
+
+    EntropyStrategy entropy(solutionWords, 10);
+    Bot bot(solutionWords, solutionWords, entropy, true);
+    Bot::SearchResult result;
+    Board board(5);
+    bot.Search(board, solutionWords, result);
+
+}
+
+TEST( Wordle, SimpleLookahead)
+{
+    // Guessing words and solution words are the same for this test
+    std::vector<std::string> solutionWords;
+
+    solutionWords.push_back("bikes");
+    solutionWords.push_back("hikes");
+    solutionWords.push_back("likes");
+    solutionWords.push_back("slate");
+
+    EntropyStrategy subStrategy( solutionWords, 10);
+    LookaheadStrategy lookahead(subStrategy, solutionWords, 10);
+    Board board;
+
+    ScoredGuess bestGuess = lookahead.BestGuess(board, solutionWords);
 }
 
 //void TestWordTree()

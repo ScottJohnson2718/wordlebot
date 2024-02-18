@@ -143,19 +143,40 @@ void Bot::SearchRecurse(Board& board,
         //result.guessedWords.insert(bestScoredGuess.first);
 
         // This guess separates the remaining solutions into groups according to a common board score
-        std::map<ScoredWord, std::vector<std::string>> groups;
+        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
         for (auto const &possibleSolution: remainingSolutions)
         {
             ScoredWord s = Score(possibleSolution, bestGuessWord);
-            groups[s].push_back(bestGuessWord);
+            auto iter = groups.find(s);
+            if (iter == groups.end())
+            {
+                auto strList = std::make_shared<std::vector<std::string>>();
+                strList->push_back(possibleSolution);
+                groups[s] = strList;
+            }
+            else
+            {
+                iter->second->push_back(possibleSolution);
+            }
         }
 
+//        int groupIndex  =0;
+//        for (auto const &p : groups)
+//        {
+//            std::cout << groupIndex++ << " : ";
+//            for (auto const &str : *p.second)
+//            {
+//                std::cout << str << " ";
+//            }
+//            std::cout << std::endl;
+//        }
+
         // Recurse on the groups of solution words
-        for (const auto &p: groups)
+        for (auto &p: groups)
         {
             board.PushScoredGuess(bestGuessWord, p.first);
 
-            SearchRecurse(board, p.second, result);
+            SearchRecurse(board, *p.second, result);
 
             board.Pop();
         }

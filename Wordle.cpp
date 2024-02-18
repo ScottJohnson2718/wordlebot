@@ -108,3 +108,20 @@ bool LoadDictionaries(bool newYorkTimes, int n,
     return true;
 }
 
+void RemoveDuplicateGuesses( std::vector<ScoredGuess> &scoredGuesses)
+{
+    // Remove duplicate guesses by string
+    std::sort(scoredGuesses.begin(), scoredGuesses.end(),
+              [](const ScoredGuess& a, const ScoredGuess& b)
+              {
+                  return a.first < b.first;
+              });
+    scoredGuesses.erase( unique( scoredGuesses.begin(), scoredGuesses.end(),
+                                 [](const ScoredGuess& a, const ScoredGuess& b)
+                                 {
+                                     return a.first == b.first;
+                                 }
+    ), scoredGuesses.end() );
+
+}
+
