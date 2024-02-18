@@ -23,9 +23,12 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
         return ScoredGuess(solutionWords[0], 1);
     }
 
-    // Find at most the best 100 guesses. We can't fan out into an infinite search now can we?
-    EntropyStrategy entropyStrategy(guessingWords_, 100);
-    std::vector<ScoredGuess> scoredGuesses = entropyStrategy.BestGuesses(board, solutionWords);
+    if (solutionWords.size() > 200)
+    {
+        return subStrategy_.BestGuess(board, solutionWords);
+    }
+
+    /*std::vector<ScoredGuess> scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
     for (auto const& scoredGuess : scoredGuesses)
     {
@@ -33,12 +36,13 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
 
         prunedGuessWords.push_back(guessWord);
     }
-    scoredGuesses.clear();
+    scoredGuesses.clear();*/
+
 
     ScoredGuess bestGuess;
     size_t minSearchSpace = std::numeric_limits<size_t>::max();
 
-    for (auto const& guessWord : prunedGuessWords)
+    for (auto const& guessWord : guessingWords_)
     {
         size_t totalSearchSpacePerGuess = 0;
 
@@ -62,7 +66,7 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
         {
             const std::vector<std::string> &remaining = *p.second;
 
-            Bot slaveBot(prunedGuessWords, remaining, subStrategy_);
+            Bot slaveBot(guessingWords_, remaining, subStrategy_);
 
             // Do a full search of the remaining space
             Bot::SearchResult result;
@@ -91,9 +95,13 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
         return scoredGuesses;
     }
 
+    if (solutionWords.size() > 200)
+    {
+        return subStrategy_.BestGuesses(board, solutionWords);
+    }
+
     // Find at most the best 100 guesses. We can't fan out into an infinite search now can we?
-    EntropyStrategy entropyStrategy(guessingWords_, 100);
-    scoredGuesses = entropyStrategy.BestGuesses(board, solutionWords);
+    scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
     for (auto const& scoredGuess : scoredGuesses) {
         const std::string &guessWord = scoredGuess.first;

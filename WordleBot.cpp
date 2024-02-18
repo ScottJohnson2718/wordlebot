@@ -32,6 +32,8 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     board.PushScoredGuess( openingGuess, firstScore);
     WordQuery query = board.GenerateQuery();
     auto remaining = PruneSearchSpace(query, solutionWords_);
+    if (verbose_)
+        std::cout << "Opening guess : " << openingGuess << " with " << remaining.size() << " left" << std::endl;
 
     if (remaining.empty())
     {
