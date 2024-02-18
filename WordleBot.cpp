@@ -67,10 +67,13 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
             // Just pick the first one
             guess.first = remaining[0];
             guess.second = 1.0f;
+           
             if (remaining.size() > 1) {
                 remaining[0] = remaining[1];
                 remaining.pop_back();
             }
+            if (verbose_)
+                std::cout << "Best guess : " << guess.first << " with " << remaining.size() << " left" << std::endl;
             ScoredWord score = Score(hiddenSolution, guess.first);
             board.PushScoredGuess(guess.first, score);
         }
@@ -79,14 +82,15 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
             // Pick a new guess using the strategy
             size_t prevRemainingCount = remaining.size();
             guess = strategy_.BestGuess(board, remaining);
-            if (verbose_)
-                std::cout << "Best guess : " << guess.first << std::endl;
 
             // Eval the new guess and reduce the search space
             ScoredWord score = Score(hiddenSolution, guess.first);
             board.PushScoredGuess(guess.first, score);
             WordQuery query = board.GenerateQuery();
             remaining = PruneSearchSpace(query, remaining);
+
+            if (verbose_)
+                std::cout << "Best guess : " << guess.first << " with " << remaining.size() << " left" << std::endl;
 
             // The search space has to always get smaller.
             if (remaining.size() >= prevRemainingCount) {

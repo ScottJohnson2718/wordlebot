@@ -19,7 +19,7 @@
 #ifdef __APPLE__
 std::filesystem::path dictPath("..");
 #else
-std::filesystem::path dictPath("../..");
+std::filesystem::path dictPath("D:/work/git_repos/wordlebot");
 #endif
 
 TEST( Wordle, GuessOnFirstTry)
