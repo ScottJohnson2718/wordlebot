@@ -33,50 +33,29 @@ int Bot::SolvePuzzle(Board& board, std::string const& hiddenSolution, const std:
     WordQuery query = board.GenerateQuery();
     auto remaining = PruneSearchSpace(query, solutionWords_);
 
+    if (remaining.empty())
+    {
+        // Failed. Not in dictionary or query created a contradiction
+        return 0;
+    }
+    else if (remaining.size() == 1)
+    {
+        // The opening guess and then guessing the remaining one is two guesses
+        std::string nextGuess = remaining[0];
+        board.PushScoredGuess( nextGuess, Score(hiddenSolution, nextGuess));
+        return board.guesses.size();
+    }
+
     return SolvePuzzle(board, hiddenSolution, remaining);
 }
 
 int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std::vector<std::string>& remainingSolutions)
 {
     ScoredGuess guess;
-    size_t prevRemainingCount(remainingSolutions.size());
     std::vector<std::string> remaining = remainingSolutions;
 
     while (true)
     {
-        // Pick a new guess using the strategy
-        guess = strategy_.BestGuess(board, remaining);
-        if (verbose_)
-            std::cout << "Best guess : " << guess.first << std::endl;
-
-        // Eval the new guess and reduce the search space
-        ScoredWord score = Score(hiddenSolution, guess.first);
-        board.PushScoredGuess(guess.first, score);
-        WordQuery query = board.GenerateQuery();
-        remaining = PruneSearchSpace(query, remaining);
-
-        // The search space has to always get smaller.
-        if (remaining.size() >= prevRemainingCount)
-        {
-            std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
-            std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size() << std::endl;
-            return 0;
-        }
-
-        if (board.guesses.back() == hiddenSolution)
-        {
-            // Solved!
-            if (verbose_)
-            {
-                std::cout << hiddenSolution << " -> ";
-                for (auto v : board.guesses)
-                {
-                    std::cout << v << " ";
-                }
-                std::cout << std::endl;
-            }
-            break;
-        }
         if (remaining.empty())
         {
             std::cerr << "No solution for word " << hiddenSolution << std::endl;
@@ -87,13 +66,48 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
             // Just pick the first one
             guess.first = remaining[0];
             guess.second = 1.0f;
-            prevRemainingCount = remaining.size();
             if (remaining.size() > 1) {
                 remaining[0] = remaining[1];
                 remaining.pop_back();
             }
             ScoredWord score = Score(hiddenSolution, guess.first);
             board.PushScoredGuess(guess.first, score);
+        }
+        else
+        {
+            // Pick a new guess using the strategy
+            size_t prevRemainingCount = remaining.size();
+            guess = strategy_.BestGuess(board, remaining);
+            if (verbose_)
+                std::cout << "Best guess : " << guess.first << std::endl;
+
+            // Eval the new guess and reduce the search space
+            ScoredWord score = Score(hiddenSolution, guess.first);
+            board.PushScoredGuess(guess.first, score);
+            WordQuery query = board.GenerateQuery();
+            remaining = PruneSearchSpace(query, remaining);
+
+            // The search space has to always get smaller.
+            if (remaining.size() >= prevRemainingCount) {
+                std::cerr << "Failed to solve when " << hiddenSolution << " was the solution." << std::endl;
+                std::cerr << "Guess " << guess.first << " did not reduce the search space from " << remaining.size()
+                          << std::endl;
+                return 0;
+            }
+        }
+        if (board.guesses.back() == hiddenSolution)
+        {
+            // Solved
+            if (verbose_)
+            {
+                std::cout << hiddenSolution << " -> ";
+                for (auto v: board.guesses)
+                {
+                    std::cout << v << " ";
+                }
+                std::cout << std::endl;
+            }
+            break;
         }
     }
     return board.guesses.size();
