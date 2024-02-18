@@ -103,8 +103,12 @@ bool LoadDictionaries(bool newYorkTimes, int n,
            return false;
         if (!LoadDictionary(words5_short, solutionWords))
             return false;
+        // We allow the guessing of the solution words
+        std::copy( solutionWords.begin(), solutionWords.end(), std::back_inserter(guessingWords));
     }
     std::sort( solutionWords.begin(), solutionWords.end());
+    // Remove duplicates in the solution words
+    solutionWords.erase( unique( solutionWords.begin(), solutionWords.end()), solutionWords.end());
     return true;
 }
 
