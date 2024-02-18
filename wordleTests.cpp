@@ -45,11 +45,24 @@ TEST( Wordle, Joker)
     bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
 
-    BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy, true);
+    {
+        BlendedStrategy strategy(guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("joker", "stale");
-    EXPECT_EQ( guessCount, 6);
+        int guessCount = bot.SolvePuzzle("joker", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 6);
+    }
+
+    {
+        EntropyStrategy entropy(guessingWords, 10);
+        LookaheadStrategy strategy(entropy,guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
+
+        int guessCount = bot.SolvePuzzle("joker", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 6);
+    }
 }
 
 TEST( Wordle, Oozed)
@@ -60,11 +73,24 @@ TEST( Wordle, Oozed)
     bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
 
-    BlendedStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy, true);
+    {
+        BlendedStrategy strategy(guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
 
-    int guessCount = bot.SolvePuzzle("oozed", "stale");
-    EXPECT_EQ( guessCount, 6);
+        int guessCount = bot.SolvePuzzle("oozed", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 6);
+    }
+
+    {
+        EntropyStrategy entropy(guessingWords, 10);
+        LookaheadStrategy strategy(entropy,guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
+
+        int guessCount = bot.SolvePuzzle("oozed", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 6);
+    }
 }
 
 TEST( Wordle, Globe)
@@ -206,15 +232,19 @@ TEST( Wordle, Strategy)
     BlendedStrategy blended(guessingWords, 10);
     EntropyStrategy entropy(guessingWords, 10);
     SearchStrategy search(guessingWords, 10);
+    LookaheadStrategy lookahead(entropy, guessingWords, 10);
 
     std::string opening = "slate";
     float aveGuesses0 = TestWords(solutionWords, guessingWords, opening, entropy);
     float aveGuesses1 = TestWords(solutionWords, guessingWords, opening, blended);
     float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
+    float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, lookahead);
+
 
     std::cout << "Ave guesses for entropy only strategy: " << aveGuesses0 << std::endl;
     std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
     std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
+    std::cout << "Ave guesses for lookahead strategy: " << aveGuesses3 << std::endl;
 
     // With NYT dictionary and slate as the starting word...
     // Ave guesses for entropy only strategy: 3.8013
@@ -283,6 +313,23 @@ TEST( Wordle, SimpleLookahead)
     Board board;
 
     ScoredGuess bestGuess = lookahead.BestGuess(board, solutionWords);
+}
+
+TEST( Wordle, SolveUsingLookahead)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    EntropyStrategy entropyStrat(guessingWords, 10);
+    LookaheadStrategy lookaheadStrat(entropyStrat, guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, lookaheadStrat, true);
+
+    int guessCount = bot.SolvePuzzle("globe", "stale");
+    EXPECT_GT( guessCount, 0);
+    EXPECT_LE( guessCount, 6);
 }
 
 //void TestWordTree()

@@ -27,40 +27,54 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
     EntropyStrategy entropyStrategy(guessingWords_, 100);
     std::vector<ScoredGuess> scoredGuesses = entropyStrategy.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
-    for (auto const& scoredGuess : scoredGuesses) {
+    for (auto const& scoredGuess : scoredGuesses)
+    {
         const std::string &guessWord = scoredGuess.first;
 
         prunedGuessWords.push_back(guessWord);
     }
+    scoredGuesses.clear();
 
     ScoredGuess bestGuess;
     size_t minSearchSpace = std::numeric_limits<size_t>::max();
 
-    for (auto const& possibleSolution : solutionWords)
+    for (auto const& guessWord : prunedGuessWords)
     {
-        // Pretend that we guess this word and see how it would go.
-        for (auto const& guessWord : prunedGuessWords)
+        size_t totalSearchSpacePerGuess = 0;
+
+        // This guess separates the remaining solutions into groups according to a common board score
+        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
+        for (auto const &possibleSolution: solutionWords)
         {
-            Bot::SearchResult result;
-            auto scoredWord = Score(guessWord, possibleSolution);
-            Board delta( board.n);
+            ScoredWord s = Score(possibleSolution, guessWord);
+            auto iter = groups.find(s);
+            if (iter == groups.end()) {
+                auto strList = std::make_shared<std::vector<std::string>>();
+                strList->push_back(possibleSolution);
+                groups[s] = strList;
+            } else {
+                iter->second->push_back(possibleSolution);
+            }
+        }
 
-            delta.PushScoredGuess( guessWord, scoredWord);
-            WordQuery query = board.GenerateQuery();
+        // Process the groups of solution words
+        for (auto &p: groups)
+        {
+            const std::vector<std::string> &remaining = *p.second;
 
-            auto remaining = PruneSearchSpace(query, solutionWords);
-
-            Bot slaveBot( prunedGuessWords, remaining, subStrategy_);
+            Bot slaveBot(prunedGuessWords, remaining, subStrategy_);
 
             // Do a full search of the remaining space
+            Bot::SearchResult result;
             slaveBot.Search(board, remaining, result);
 
-            if (result.totalSize < minSearchSpace)
-            {
-                minSearchSpace = result.totalSize;
-                bestGuess.first = guessWord;
-                bestGuess.second = result.totalSize;
-            }
+            totalSearchSpacePerGuess += result.totalSize;
+        }
+        if (totalSearchSpacePerGuess < minSearchSpace)
+        {
+            minSearchSpace = totalSearchSpacePerGuess;
+            bestGuess.first = guessWord;
+            bestGuess.second = totalSearchSpacePerGuess;
         }
     }
 
@@ -86,27 +100,41 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
 
         prunedGuessWords.push_back(guessWord);
     }
+    scoredGuesses.clear();
 
-    for (auto const& possibleSolution : solutionWords)
+    for (auto const& guessWord : prunedGuessWords)
     {
-        for (auto const& guessWord : prunedGuessWords)
+        size_t totalSearchSpacePerGuess = 0;
+
+        // This guess separates the remaining solutions into groups according to a common board score
+        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
+        for (auto const &possibleSolution: solutionWords)
         {
-            Bot::SearchResult result;
-            auto scoredWord = Score(guessWord, possibleSolution);
-            Board delta( board.n);
+            ScoredWord s = Score(possibleSolution, guessWord);
+            auto iter = groups.find(s);
+            if (iter == groups.end()) {
+                auto strList = std::make_shared<std::vector<std::string>>();
+                strList->push_back(possibleSolution);
+                groups[s] = strList;
+            } else {
+                iter->second->push_back(possibleSolution);
+            }
+        }
 
-            delta.PushScoredGuess( guessWord, scoredWord);
-            WordQuery query = board.GenerateQuery();
+        // Process the groups of solution words
+        for (auto &p: groups)
+        {
+            const std::vector<std::string> &remaining = *p.second;
 
-            auto remaining = PruneSearchSpace(query, solutionWords);
-
-            Bot slaveBot( prunedGuessWords, remaining, subStrategy_);
+            Bot slaveBot(prunedGuessWords, remaining, subStrategy_);
 
             // Do a full search of the remaining space
-            slaveBot.Search(board, solutionWords, result);
+            Bot::SearchResult result;
+            slaveBot.Search(board, remaining, result);
 
-            scoredGuesses.push_back( ScoredGuess(guessWord, (float) result.totalSize));
+            totalSearchSpacePerGuess += result.totalSize;
         }
+        scoredGuesses.push_back( ScoredGuess(guessWord, (float) totalSearchSpacePerGuess));
     }
 
     // Remove duplicate guesses by string

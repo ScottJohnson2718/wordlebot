@@ -7,6 +7,7 @@
 //#include "ScoredWord.h"
 #include "Board.h"
 #include "Strategy.h"
+#include "LookaheadStrategy.h"
 
 int main(int argc, char *argv[])
 {
@@ -93,7 +94,8 @@ int main(int argc, char *argv[])
     else
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
-    BlendedStrategy strategy(guessingWords, 10);
+    EntropyStrategy entropyStrategy(guessingWords, 10);
+    LookaheadStrategy strategy(entropyStrategy,guessingWords, 10);
 
     WordQuery query = board.GenerateQuery();
 

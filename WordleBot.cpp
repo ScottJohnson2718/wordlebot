@@ -58,6 +58,7 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
     {
         if (remaining.empty())
         {
+            // Either the solution is not in the dictionary or there was a contradiction in the board
             std::cerr << "No solution for word " << hiddenSolution << std::endl;
             return 0;
         }
