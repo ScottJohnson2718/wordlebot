@@ -112,25 +112,20 @@ int main(int argc, char *argv[])
     std::cout << std::endl;
 
     std::cout << "Best guesses " << std::endl;
-    if (remaining.size() <= 2)
+    auto bestGuesses = strategy.BestGuesses(board, remaining);
+    for (const auto &g : bestGuesses)
     {
-        for (const auto &g : remaining)
+        std::cout << g.first << " : " << g.second;
+
+        if (newYorkTimes)
         {
-            std::cout << g << std::endl;
+            if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
+            {
+                std::cout << " <-- solution word";
+            }
         }
+        std::cout << std::endl;
     }
-    else
-    {
-        auto bestGuesses = strategy.BestGuesses(board, remaining);
-
-        int x = 0;
-        for (const auto &g : bestGuesses)
-        {
-            std::cout << g.first << " : " << g.second << std::endl;
-
-        }
-    }
-
 }
 
 // wordlebot search strategy doesn't favor the solution words as guesses
