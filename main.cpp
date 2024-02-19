@@ -101,10 +101,15 @@ int main(int argc, char *argv[])
 
     std::vector<std::string>  remaining = PruneSearchSpace(query, solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
-    for (auto const &w : remaining)
+    for (int idx = 0; idx < remaining.size() ; ++idx)
     {
-        std::cout << w << std::endl;
+        std::cout << remaining[idx] << " ";
+        if ((idx % 15) == 0 && (idx > 0))
+        {
+            std::cout << std::endl;
+        }
     }
+    std::cout << std::endl;
 
     std::cout << "Best guesses " << std::endl;
     if (remaining.size() <= 2)
@@ -118,9 +123,11 @@ int main(int argc, char *argv[])
     {
         auto bestGuesses = strategy.BestGuesses(board, remaining);
 
+        int x = 0;
         for (const auto &g : bestGuesses)
         {
             std::cout << g.first << " : " << g.second << std::endl;
+
         }
     }
 
