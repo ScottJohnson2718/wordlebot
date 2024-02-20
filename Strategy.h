@@ -76,4 +76,24 @@ struct BlendedStrategy : public Strategy
 
 };
 
+////////////////
+
+// Pick the best guess by how the scoring of solution list is partitioned into groups by the guesses.
+// This is how the New York Times Wordlebot describes their best solution.
+
+struct ScoreGroupingStrategy : public Strategy
+{
+    ScoreGroupingStrategy(
+        const std::vector<std::string>& guessingWords, size_t maxGuessesReturned);
+
+    ScoredGuess BestGuess(Board& board,
+        const std::vector<std::string>& solutionWords) const;
+
+    std::vector<ScoredGuess> BestGuesses(Board& board,
+        const std::vector<std::string>& solutionWords) const;
+
+    const std::vector<std::string>& guessingWords_;
+    size_t maxGuessesReturned_;
+};
+
 

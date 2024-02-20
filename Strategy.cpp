@@ -2,6 +2,8 @@
 #include "Strategy.h"
 
 #include <iostream>
+#include <map>
+#include <unordered_map>
 
 // This strategy employs only entropy to chose the next guess given a board.
 EntropyStrategy::EntropyStrategy(
@@ -16,7 +18,7 @@ ScoredGuess EntropyStrategy::BestGuess(Board& board,
 {
     if (solutionWords.size() == 1)
     {
-        return ScoredGuess(solutionWords[0], 1);
+        return ScoredGuess(solutionWords[0], 1.0f);
     }
 
     WordQuery query = board.GenerateQuery();
@@ -270,3 +272,95 @@ std::vector<ScoredGuess> BlendedStrategy::BestGuesses(Board& board,
     return searchStrategy_.BestGuesses(board, solutionWords);
 }
 
+//////////////////
+
+ScoreGroupingStrategy::ScoreGroupingStrategy(
+    const std::vector<std::string>& guessingWords,
+    size_t maxGuessesReturned)
+    : guessingWords_(guessingWords)
+    , maxGuessesReturned_(maxGuessesReturned)
+{
+}
+
+ScoredGuess ScoreGroupingStrategy::BestGuess(Board& board,
+    const std::vector<std::string>& solutionWords) const
+{
+    if (solutionWords.size() == 1)
+    {
+        return ScoredGuess(solutionWords[0], 1);
+    }
+    
+    ScoredGuess bestGuess;
+    size_t mostGroups = 0;
+
+    for (auto const& guessWord : guessingWords_)
+    {
+        // This guess separates the remaining solutions into groups according to a common board score
+        std::unordered_map<ScoredWord, size_t, ScoredWordHash, ScoredWordEqual> groups;
+        for (auto const& possibleSolution : solutionWords)
+        {
+            ScoredWord s = Score(possibleSolution, guessWord);
+            groups[s]++;
+        }
+
+        if (groups.size() > mostGroups)
+        {
+            mostGroups = groups.size();
+            bestGuess.first = guessWord;
+            bestGuess.second = (float) mostGroups;
+        }
+    }
+
+    return bestGuess;
+}
+
+std::vector<ScoredGuess> ScoreGroupingStrategy::BestGuesses(Board& board,
+    const std::vector<std::string>& solutionWords) const
+{
+    std::vector<ScoredGuess> scoredGuesses;
+    if (solutionWords.size() == 1)
+    {
+        scoredGuesses.push_back(ScoredGuess(solutionWords[0], 1));
+        return scoredGuesses;
+    }
+
+    for (auto const& guessWord : guessingWords_)
+    {
+         // This guess separates the remaining solutions into groups according to a common board score
+        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
+        for (auto const& possibleSolution : solutionWords)
+        {
+            ScoredWord s = Score(possibleSolution, guessWord);
+            auto iter = groups.find(s);
+            if (iter == groups.end()) {
+                auto strList = std::make_shared<std::vector<std::string>>();
+                strList->push_back(possibleSolution);
+                groups[s] = strList;
+            }
+            else {
+                iter->second->push_back(possibleSolution);
+            }
+        }
+
+        scoredGuesses.push_back(ScoredGuess(guessWord, (float)groups.size()));
+    }
+
+    // Remove duplicate guesses by string
+    RemoveDuplicateGuesses(scoredGuesses);
+
+    // Sort them big to small
+    std::sort(scoredGuesses.begin(), scoredGuesses.end(),
+        [](const ScoredGuess& a, const ScoredGuess& b)
+        {
+            return a.second > b.second;
+        }
+    );
+
+    std::vector< ScoredGuess > topGuessesByScore;
+    for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
+    {
+        topGuessesByScore.push_back(scoredGuesses[i]);
+    }
+
+    return topGuessesByScore;
+}

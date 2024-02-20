@@ -74,6 +74,7 @@ TEST( Wordle, Oozed)
     ASSERT_TRUE(loaded);
 
     {
+        std::cout << "Blended" << std::endl;
         BlendedStrategy strategy(guessingWords, 10);
         Bot bot(guessingWords, solutionWords, strategy, true);
 
@@ -83,9 +84,20 @@ TEST( Wordle, Oozed)
     }
 
     {
+        std::cout << "Lookahead with Entropy as the sub" << std::endl;
         EntropyStrategy entropy(guessingWords, 10);
         LookaheadStrategy strategy(entropy,guessingWords, 10);
         Bot bot(guessingWords, solutionWords, strategy, true);
+
+        int guessCount = bot.SolvePuzzle("oozed", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 6);
+    }
+
+    {
+        std::cout << "Score Grouping" << std::endl;
+        ScoreGroupingStrategy grouping(guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, grouping, true);
 
         int guessCount = bot.SolvePuzzle("oozed", "stale");
         EXPECT_GT(guessCount, 0);
@@ -219,7 +231,7 @@ float TestWords(std::vector<std::string> &solutionWords, const std::vector < std
     return (double)guesses / (double)solutionWords.size();
 }
 
-TEST( Wordle, Strategy)
+TEST(Wordle, Strategy)
 {
     // These dictionaries do not share words between them. We can combine them without making duplicates.
     std::vector<std::string> guessingWords;
@@ -232,19 +244,21 @@ TEST( Wordle, Strategy)
     BlendedStrategy blended(guessingWords, 10);
     EntropyStrategy entropy(guessingWords, 10);
     SearchStrategy search(guessingWords, 10);
-    LookaheadStrategy lookahead(entropy, guessingWords, 10);
+    //LookaheadStrategy lookahead(entropy, guessingWords, 10);
+   // LookaheadStrategy lookahead(search, guessingWords, 10);
+    ScoreGroupingStrategy groups(guessingWords, 10);
 
     std::string opening = "slate";
     float aveGuesses0 = TestWords(solutionWords, guessingWords, opening, entropy);
     float aveGuesses1 = TestWords(solutionWords, guessingWords, opening, blended);
     float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
-    float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, lookahead);
+    float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, groups);
 
 
     std::cout << "Ave guesses for entropy only strategy: " << aveGuesses0 << std::endl;
     std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
     std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
-    std::cout << "Ave guesses for lookahead strategy: " << aveGuesses3 << std::endl;
+    std::cout << "Ave guesses for groups strategy: " << aveGuesses3 << std::endl;
 
     // With NYT dictionary and slate as the starting word...
     // Ave guesses for entropy only strategy: 3.8013
@@ -259,6 +273,25 @@ TEST( Wordle, Strategy)
     // Ave guesses for entropy only strategy: 3.68812
     // Ave guesses for blended strategy: 3.58445
     // Ave guesses for search strategy: 3.57754
+
+    // Feb 18 2024 . Just wrote lookahead strategy.
+    // It uses entropy strategy to prune so it is no better than entropy.
+    // Ave guesses for entropy only strategy : 3.66453
+    // Ave guesses for blended strategy : 3.53573
+    // Ave guesses for search strategy : 3.53316
+    // Ave guesses for lookahead strategy : 3.60847
+
+    // I adjusted the pruning level from the top 100 entropy words to the top 500 and the "oozed" solution droppped to 6 from 7.
+    // Then I changed the lookahead strategy to return its substrategy (entropy) if the remaining solutions are greater than 100
+    // Ave guesses : slate 3.53958
+    // Very close to the SearchStrategy without looking ahead all the way to the end.
+
+    // Wrote strategy ScoreGrouping. It is winning by a tiny bit. But I changed the dictionaries so the previous data is out of date.
+    // Rerun
+    // Ave guesses for entropy only strategy: 3.6564
+    // Ave guesses for blended strategy : 3.52803
+    // Ave guesses for search strategy : 3.5246
+    // Ave guesses for groups strategy : 3.4908
 }
 
 TEST( Wordle, TestOpeningWords)
@@ -271,9 +304,14 @@ TEST( Wordle, TestOpeningWords)
     std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
     std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
 
-    BlendedStrategy strategy(guessingWords, 10);
-
-    TestWords(solutionWords, guessingWords, "slate", strategy);  // 3.65 guesses per word
+    //SearchStrategy search(guessingWords, 10);
+    //LookaheadStrategy lookahead(search, guessingWords, 10);
+    EntropyStrategy entropy(guessingWords, 10);
+    LookaheadStrategy lookahead(entropy, guessingWords, 10);
+    ScoreGroupingStrategy grouping(guessingWords, 10);
+    
+    TestWords(solutionWords, guessingWords, "slate", grouping);
+    //TestWords(solutionWords, guessingWords, "slate", lookahead);  
     //TestWords(solutionWords, "stoae");
     //TestWords(solutionWords, "arose");  // 9640
     //TestWords(solutionWords, "limen");  // 9825
@@ -323,14 +361,31 @@ TEST( Wordle, SolveUsingLookahead)
     bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
 
-    EntropyStrategy entropyStrat(guessingWords, 10);
-    LookaheadStrategy lookaheadStrat(entropyStrat, guessingWords, 10);
+    EntropyStrategy subStrat(guessingWords, 200);
+    LookaheadStrategy lookaheadStrat(subStrat, guessingWords, 10);
     Bot bot(guessingWords, solutionWords, lookaheadStrat, true);
 
-    int guessCount = bot.SolvePuzzle("globe", "stale");
+    int guessCount = bot.SolvePuzzle("ridge", "slate");
     EXPECT_GT( guessCount, 0);
     EXPECT_LE( guessCount, 6);
 }
+
+TEST(Wordle, SolveUsingScoreGrouping)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    ScoreGroupingStrategy grouping(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, grouping, true);
+
+    int guessCount = bot.SolvePuzzle("ridge", "slate");
+    EXPECT_GT(guessCount, 0);
+    EXPECT_LE(guessCount, 6);
+}
+
 
 //void TestWordTree()
 //{

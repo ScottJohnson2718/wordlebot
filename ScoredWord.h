@@ -34,6 +34,22 @@ struct ScoredWord
     uint32_t v = 0;
 };
 
+struct ScoredWordHash
+{
+    std::size_t operator()(const ScoredWord& s) const
+    {
+        return std::hash<uint32_t>()(s.v);
+    }
+};
+
+struct ScoredWordEqual
+{
+    bool operator()(const ScoredWord& lhs, const ScoredWord& rhs) const
+    {
+        return lhs.v == rhs.v;
+    }
+};
+
 ScoredWord Score(const std::string& solution, const std::string& guess);
 
 std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);

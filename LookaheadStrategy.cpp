@@ -23,26 +23,26 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
         return ScoredGuess(solutionWords[0], 1);
     }
 
-    if (solutionWords.size() > 200)
+    if (solutionWords.size() > 150)
     {
         return subStrategy_.BestGuess(board, solutionWords);
     }
 
-    /*std::vector<ScoredGuess> scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
+    std::vector<ScoredGuess> scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
+    prunedGuessWords.reserve(scoredGuesses.size());
     for (auto const& scoredGuess : scoredGuesses)
     {
-        const std::string &guessWord = scoredGuess.first;
+        const std::string& guessWord = scoredGuess.first;
 
         prunedGuessWords.push_back(guessWord);
     }
-    scoredGuesses.clear();*/
-
+    scoredGuesses.clear();
 
     ScoredGuess bestGuess;
     size_t minSearchSpace = std::numeric_limits<size_t>::max();
 
-    for (auto const& guessWord : guessingWords_)
+    for (auto const& guessWord : prunedGuessWords)
     {
         size_t totalSearchSpacePerGuess = 0;
 
@@ -68,9 +68,15 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
 
             Bot slaveBot(guessingWords_, remaining, subStrategy_);
 
-            // Do a full search of the remaining space
+            // All the solutions in this group have the same score. So apply the scored guess to the board
+            // We don't prune the solutions, they have been partitioned instead.
+            board.PushScoredGuess(guessWord, p.first);
+
+            // Do a full search of the remaining space.
             Bot::SearchResult result;
             slaveBot.Search(board, remaining, result);
+
+            board.Pop();
 
             totalSearchSpacePerGuess += result.totalSize;
         }
@@ -100,10 +106,10 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
         return subStrategy_.BestGuesses(board, solutionWords);
     }
 
-    // Find at most the best 100 guesses. We can't fan out into an infinite search now can we?
     scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
-    for (auto const& scoredGuess : scoredGuesses) {
+    for (auto const& scoredGuess : scoredGuesses)
+    {
         const std::string &guessWord = scoredGuess.first;
 
         prunedGuessWords.push_back(guessWord);
@@ -134,7 +140,7 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
         {
             const std::vector<std::string> &remaining = *p.second;
 
-            Bot slaveBot(prunedGuessWords, remaining, subStrategy_);
+            Bot slaveBot(guessingWords_, remaining, subStrategy_);
 
             // Do a full search of the remaining space
             Bot::SearchResult result;
