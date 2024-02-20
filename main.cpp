@@ -102,29 +102,31 @@ int main(int argc, char *argv[])
 
     std::vector<std::string>  remaining = PruneSearchSpace(query, solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
-    for (auto const &w : remaining)
+    for (int idx = 0; idx < remaining.size() ; ++idx)
     {
-        std::cout << w << std::endl;
+        std::cout << remaining[idx] << " ";
+        if ((idx % 15) == 0 && (idx > 0))
+        {
+            std::cout << std::endl;
+        }
     }
+    std::cout << std::endl;
 
     std::cout << "Best guesses " << std::endl;
-    if (remaining.size() <= 2)
+    auto bestGuesses = strategy.BestGuesses(board, remaining);
+    for (const auto &g : bestGuesses)
     {
-        for (const auto &g : remaining)
-        {
-            std::cout << g << std::endl;
-        }
-    }
-    else
-    {
-        auto bestGuesses = strategy.BestGuesses(board, remaining);
+        std::cout << g.first << " : " << g.second;
 
-        for (const auto &g : bestGuesses)
+        if (newYorkTimes)
         {
-            std::cout << g.first << " : " << g.second << std::endl;
+            if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
+            {
+                std::cout << " <-- solution word";
+            }
         }
+        std::cout << std::endl;
     }
-
 }
 
 // wordlebot search strategy doesn't favor the solution words as guesses

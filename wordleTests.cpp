@@ -65,6 +65,35 @@ TEST( Wordle, Joker)
     }
 }
 
+// NYT wordlebot gets "crane truce price"
+TEST( Wordle, Price)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    {
+        BlendedStrategy strategy(guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
+
+        int guessCount = bot.SolvePuzzle("price", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 4);
+    }
+
+    {
+        EntropyStrategy entropy(guessingWords, 10);
+        LookaheadStrategy strategy(entropy,guessingWords, 10);
+        Bot bot(guessingWords, solutionWords, strategy, true);
+
+        int guessCount = bot.SolvePuzzle("price", "stale");
+        EXPECT_GT(guessCount, 0);
+        EXPECT_LE(guessCount, 4);
+    }
+}
+
 TEST( Wordle, Oozed)
 {
     std::vector<std::string> solutionWords;
