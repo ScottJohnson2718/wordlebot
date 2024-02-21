@@ -193,12 +193,21 @@ TEST( Scoring, DoubleLetterScoring )
     // Guess has double letter 'e' but solution only has one 'e'
     auto r1 = ScoreString( "abbey", "keeps");
     EXPECT_EQ( r1, ".E...");
+    auto r2 = ScoreString("keeps", "abbey");
+    EXPECT_EQ(r2, "...E.");
 
     // Guess has double letter 'b' and solution has double letter 'b'. Answer should
     // reflect two b's in the solution word
-    auto r2 = ScoreString("abbey", "babes");
-    EXPECT_EQ(r2, "BAbe.");
-
+    auto r3 = ScoreString("abbey", "babes");
+    EXPECT_EQ(r3, "BAbe.");
+    auto r4 = ScoreString("abbey", "abled");
+    EXPECT_EQ(r4, "ab.e.");
+    // The first b in the guess is present but in the wrong place. But later in the scan from left
+    // to right it should discover a single b in the correct place. This means that scoring is in two
+    // passes over the solution.
+    auto r5 = ScoreString("aebde", "bibed");
+    EXPECT_EQ(r5, "..bED");
+ 
     //auto r3 = ScoreString("lully", "able");
     //auto r4 = ScoreString("lully", "lilly");
 }

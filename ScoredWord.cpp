@@ -2,6 +2,7 @@
 #include "ScoredWord.h"
 #include <sstream>
 #include <algorithm>
+#include <array>
 
 // LetterCount is the count of each letter in the alphabet for a given word
 using LetterCount = std::array<int, 26>;
@@ -26,21 +27,26 @@ ScoredWord Score(const std::string& solution, const std::string& guess)
     {
         if (guess[i] == solution[i])
         {
-            score.Set(i, Correct);
-        }
-        else
-        {
             int idx = guess[i] - 'a';
+            score.Set(i, Correct);
+            solutionLT[idx]--;
+        }
+    }
+    for (int i = 0; i < solution.size(); ++i)
+    {
+        int idx = guess[i] - 'a';
 
-            if (solutionLT[idx] >= 0)
+        if (score.Get(i) != Correct)
+        {
+            if (solutionLT[idx] > 0)
             {
                 score.Set(i, CorrectNotHere);
+                solutionLT[idx]--;
             }
             else
             {
                 score.Set(i, NotPresent);
             }
-            solutionLT[idx]--;
         }
     }
     return score;
