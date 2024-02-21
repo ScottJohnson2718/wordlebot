@@ -152,3 +152,6 @@ int main(int argc, char *argv[])
 // for that. I either have to prune the guessing words by entropy (?) or prune the whole dictionary of words.
 // I can make a dictionary of guessing words per opening word. So if the opening word is "slate" I can load
 // slate.txt and use only the guessing words that are selected for some solution word.
+
+// Since redoing the double letter scoring I have to revisit the WordQuery to see how it is affected.
+// The "oozed" test case fails now due to the new scoring as an example.
