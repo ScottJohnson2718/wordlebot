@@ -8,6 +8,7 @@
 #include "Board.h"
 #include "Strategy.h"
 #include "LookaheadStrategy.h"
+#include "WordleBot.h"
 
 int main(int argc, char *argv[])
 {
@@ -56,6 +57,18 @@ int main(int argc, char *argv[])
             std::cout << std::endl;
             return 0;
         }
+        if (strcmp(argv[tokenIndex], "--solve") == 0)
+        {
+            std::string solution = argv[tokenIndex+1];
+            std::vector<std::string> guessingWords;
+            std::vector<std::string> solutionWords;
+            LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
+            ScoreGroupingStrategy strat(guessingWords, 10);
+            Bot bot(guessingWords, solutionWords, strat, true);
+            bot.SolvePuzzle(solution, "slate");
+            std::cout << std::endl;
+            return 0;
+        }
 
         std::string guess = argv[tokenIndex];
         std::string score = argv[tokenIndex+1];
@@ -94,7 +107,7 @@ int main(int argc, char *argv[])
     else
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
-    //EntropyStrategy entropyStrategy(guessingWords, 10);
+    EntropyStrategy entropyStrategy(guessingWords, 50);
     //LookaheadStrategy strategy(entropyStrategy,guessingWords, 10);
     ScoreGroupingStrategy strategy(guessingWords, 10);
 
