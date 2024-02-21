@@ -13,6 +13,29 @@ std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWor
 // in the std::vector were high in the performance profile.
 struct ScoredWord
 {
+    ScoredWord() = default;
+
+    // This is more of a debug constructor for hard coded test cases
+    ScoredWord(const std::string& scoreStr)
+    {
+        for (int i = 0; i < scoreStr.size(); ++i)
+        {
+            char ch = scoreStr[i];
+
+            if (ch == '.')
+            {
+                Set(i, NotPresent);
+            }
+            else if (islower(ch))
+            {
+                Set(i, Correct);
+            }
+            else
+            {
+                Set(i, CorrectNotHere);
+            }
+        }
+    }
     void Set(int index, CharScore cs)
     {
         v |= cs << (index << 1);
@@ -31,7 +54,7 @@ struct ScoredWord
 
     bool operator <(const ScoredWord &s) const
     {
-        return v  < s.v;
+        return v < s.v;
     }
 
     std::string ToString(const std::string &guess) const;

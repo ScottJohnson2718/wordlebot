@@ -2,8 +2,6 @@
 
 #include "Board.h"
 
-
-
 Board::Board(int lettersPerWord)
         : n(lettersPerWord)
 {
@@ -59,9 +57,17 @@ WordQuery Board::GenerateQuery() const
     {
         std::string guess = guesses[guessIndex];
         auto score = scores[guessIndex];
-        // Avoid a quirk in wordle where it scores guesses with a contradiction.
-        // For instance, "moony" was scored "..oN." which says there is no 'o'
-        // but there is an 'o' in the third position
+
+        // The multiple letter scoring makes this difficult.
+        // You'd think you can go through the scoredWord elements once
+        // left to right but the query would contain contradictions.
+        // A letter may be marked gray NotPresent but then later in 
+        // the scored word the same letter is marked 'CorrectNotHere' 
+        // For instance, solution = "abbey" guess = "keeps". The score
+        // is ".E...". Parsing left to right, the first 'e' in 'keeps' is
+        // marked yellow and the second 'e' is marked gray. If you only
+        // consider the second gray 'e' then you would mark it as not in the word
+        // but it must be in the word.
 
         for (int charIndex = 0; charIndex < n; ++charIndex)
         {
@@ -70,20 +76,30 @@ WordQuery Board::GenerateQuery() const
                 query.SetCorrect( charIndex, guess[charIndex]);
         }
         uint32_t correctMask = ComputeMask(query.correct);
+
         for (int charIndex = 0; charIndex < n; ++charIndex)
         {
             CharScore scoreChar = score[charIndex];
             uint32_t charMask = (1 << (guess[charIndex] - 'a'));
-            if (scoreChar == NotPresent && ((charMask & correctMask) == 0))
+            if (scoreChar == CorrectNotHere && ((charMask & correctMask) == 0))
             {
-                // Set that the char is not present in the word but only
-                // if it is not already a char in the correct list
-                query.SetCantContain(guess[charIndex]);
-            }
-            else if (scoreChar != Correct)
-            {
+                // The word must contain this char somewhere
                 query.SetMustContain(guess[charIndex]);
+                // The word cannot contain this char at the charIndex position
                 query.SetCantContain(charIndex, guess[charIndex]);
+            }
+        }
+
+        for (int charIndex = 0; charIndex < n; ++charIndex)
+        {
+            CharScore scoreChar = score[charIndex];
+            uint32_t charMask = (1 << (guess[charIndex] - 'a'));
+            if (  (scoreChar == NotPresent) && 
+                ((charMask & correctMask) == 0) &&
+                ((charMask & query.mustContain) == 0)) 
+            {
+                // Set that the char is not present in the word anywhere.
+                query.SetCantContain(guess[charIndex]);
             }
         }
     }

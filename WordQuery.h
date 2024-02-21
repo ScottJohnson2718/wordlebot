@@ -44,23 +44,23 @@ struct WordQuery
     // The idea is to pretend that we guess the given guess and that the
     // new letters are not found. That would prune the search space a lot.
     // We prune best when we introduce new letters to the query.
-    void ScoreCandidate(const std::string &guess)
-    {
-        for (size_t i = 0; i < guess.size(); ++i) {
-            char ch = guess[i];
+    //void ScoreCandidate(const std::string &guess)
+    //{
+    //    for (size_t i = 0; i < guess.size(); ++i) {
+    //        char ch = guess[i];
 
-            // Don't consider letters that are already correct
-            if (guess[i] != correct[i]) {
-                uint32_t charMask = (1 << (ch - 'a'));
+    //        // Don't consider letters that are already correct
+    //        if (guess[i] != correct[i]) {
+    //            uint32_t charMask = (1 << (ch - 'a'));
 
-                // Don't consider letters that we must have
-                if ((charMask & mustContain) == 0) {
-                    // This is a new letter. Pretend it is not in the solution
-                    SetCantContain(ch);
-                }
-            }
-        }
-    }
+    //            // Don't consider letters that we must have
+    //            if ((charMask & mustContain) == 0) {
+    //                // This is a new letter. Pretend it is not in the solution
+    //                SetCantContain(ch);
+    //            }
+    //        }
+    //    }
+    //}
 
     void SetMustContain( char ch )
     {

@@ -212,6 +212,38 @@ TEST( Scoring, DoubleLetterScoring )
     //auto r4 = ScoreString("lully", "lilly");
 }
 
+TEST(WordQuery, First)
+{
+    Board board(5);
+    board.PushScoredGuess("slate", ScoredWord(".L..."));
+    auto query = board.GenerateQuery();
+
+    // Query should pass words that have an L and no 's', 'a', 't', or 'e'.
+    EXPECT_TRUE(query.Satisfies("build"));   // passes. Has an 'l' and no bad chars
+    EXPECT_FALSE(query.Satisfies("slots"));  // has an 's' so no
+    EXPECT_FALSE(query.Satisfies("apple"));  // has an 'a' so no
+
+    board.PushScoredGuess("grody", ScoredWord("...D."));
+    EXPECT_TRUE(query.Satisfies("build")); 
+
+    board.PushScoredGuess("caput", ScoredWord("...U."));
+    EXPECT_TRUE(query.Satisfies("build"));
+    EXPECT_FALSE(query.Satisfies("group")); // no 'g's allowed or r's
+}
+
+TEST(WordQuery, DoubleLetter)
+{
+    Board board(5);
+    board.PushScoredGuess("babes", "BAbe.");
+    auto query = board.GenerateQuery();
+
+    // Query should pass words that have an L and no 's', 'a', 't', or 'e'.
+    EXPECT_TRUE(query.Satisfies("abbey"));   // passes. This is actually the solutions
+    EXPECT_FALSE(query.Satisfies("slots"));  // has an 's' so no
+    EXPECT_FALSE(query.Satisfies("apple"));   // fails. No 'b's let alone is the right place
+    EXPECT_FALSE(query.Satisfies("cable"));   // fails. No 'b' in correct place.
+}
+
 // slate "..A.." robin ".O..N" manga ".ANG."
 TEST( Wordle, Agony)
 {
