@@ -4,6 +4,9 @@
 #include "Wordle.h"
 
 using ScoredGuess = std::pair< std::string, float >;
+struct ScoredWord;
+
+std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);
 
 // An array of CharScore but put into bits in a uint32_t.
 // This was a std::vector< CharScore > but it was made into this after the allocations
@@ -31,6 +34,9 @@ struct ScoredWord
         return v  < s.v;
     }
 
+    std::string ToString(const std::string &guess) const;
+
+
     uint32_t v = 0;
 };
 
@@ -51,6 +57,7 @@ struct ScoredWordEqual
 };
 
 ScoredWord Score(const std::string& solution, const std::string& guess);
+std::string ScoreString(const std::string &solution, const std::string &guess);
 
 std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);
 

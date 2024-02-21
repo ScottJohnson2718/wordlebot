@@ -186,6 +186,39 @@ TEST( Wordle, Abode)
     EXPECT_LE( guessCount, 6);
 }
 
+// Double letter scoring. Based on this source.
+// https://nerdschalk.com/wordle-same-letter-twice-rules-explained-how-does-it-work/
+TEST( Scoring, DoubleLetterScoring )
+{
+    // Guess has double letter 'e' but solution only has one 'e'
+    auto r1 = ScoreString( "abbey", "keeps");
+    EXPECT_EQ( r1, ".E...");
+
+    // Guess has double letter 'b' and solution has double letter 'b'. Answer should
+    // reflect two b's in the solution word
+    auto r2 = ScoreString("abbey", "babes");
+    EXPECT_EQ(r2, "BAbe.");
+
+    //auto r3 = ScoreString("lully", "able");
+    //auto r4 = ScoreString("lully", "lilly");
+}
+
+// slate "..A.." robin ".O..N" manga ".ANG."
+TEST( Wordle, Agony)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
+
+    EntropyStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy, true);
+
+    int guessCount = bot.SolvePuzzle("agony", "slate");
+    EXPECT_NE( guessCount, 0);
+    EXPECT_LE( guessCount, 6);
+}
+
 // Word was votes
 // wordlebot guessed " stale tents boric vapid votes
 // Could it do better? tents doesn't seem like a good guess to me.
