@@ -3,6 +3,7 @@
 #include <string>
 #include <stdint.h>
 #include <vector>
+#include <array>
 
 struct WordQuery
 {
@@ -18,7 +19,7 @@ struct WordQuery
 
     // The letters the word must contain
     uint32_t mustContain;
-    // Per character, the letters it cant contain.
+    // Per character, a mask of the letters it cant contain.
     std::vector<uint32_t> cantContain;
 
     // List of characters in the correct place.
@@ -40,29 +41,7 @@ struct WordQuery
         cantContain[charIndex] |= (1 << (ch - 'a'));
     }
 
-    // Pretend like none of the characters in this guess are in the solution
-    // The idea is to pretend that we guess the given guess and that the
-    // new letters are not found. That would prune the search space a lot.
-    // We prune best when we introduce new letters to the query.
-    //void ScoreCandidate(const std::string &guess)
-    //{
-    //    for (size_t i = 0; i < guess.size(); ++i) {
-    //        char ch = guess[i];
-
-    //        // Don't consider letters that are already correct
-    //        if (guess[i] != correct[i]) {
-    //            uint32_t charMask = (1 << (ch - 'a'));
-
-    //            // Don't consider letters that we must have
-    //            if ((charMask & mustContain) == 0) {
-    //                // This is a new letter. Pretend it is not in the solution
-    //                SetCantContain(ch);
-    //            }
-    //        }
-    //    }
-    //}
-
-    void SetMustContain( char ch )
+     void SetMustContain( char ch )
     {
         ch = tolower(ch);
         mustContain |= (1 << (ch - 'a'));

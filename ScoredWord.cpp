@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <array>
+#include <unordered_map>
 
 // LetterCount is the count of each letter in the alphabet for a given word
 using LetterCount = std::array<int, 26>;
@@ -114,4 +115,37 @@ std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWor
         }
     }
     return str;
+}
+
+size_t ScoreGroupCount(const std::string& guessWord, std::vector<std::string>& solutionWords)
+{
+    // This guess separates the remaining solutions into groups according to a common board score
+    std::unordered_map<ScoredWord, size_t, ScoredWordHash, ScoredWordEqual> groups;
+    for (auto const& possibleSolution : solutionWords)
+    {
+        ScoredWord s = Score(possibleSolution, guessWord);
+        std::string str = s.ToString(guessWord);
+        groups[s]++;
+    }
+
+    return groups.size();
+}
+
+std::vector<std::string> ScoreGroup(
+    const std::string& guessWord,
+    const ScoredWord& score,
+    std::vector < std::string>& solutionWords)
+{
+    std::vector<std::string> remaining;
+
+    for (auto const& possibleSolution : solutionWords)
+    {
+        ScoredWord s = Score(possibleSolution, guessWord);
+        std::string str = s.ToString(guessWord);      // useful for debugging
+        if (score == s)
+        {
+            remaining.push_back(possibleSolution);
+        }
+    }
+    return remaining;
 }

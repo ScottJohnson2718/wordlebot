@@ -4,6 +4,7 @@
 #include <string>
 #include <filesystem>
 #include <vector>
+#include <string>
 
 using ScoredGuess = std::pair< std::string, float >;
 using FrequencyTable = std::array<float, 26>;
@@ -23,4 +24,5 @@ bool LoadDictionaries(bool newYorkTimes, int n,
                       const std::filesystem::path &dictPath,    // dictionary directory
                       std::vector<std::string>& solutionWords,
                       std::vector<std::string>& guessingWords);
+
 
