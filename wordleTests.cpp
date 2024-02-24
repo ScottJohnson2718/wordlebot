@@ -476,13 +476,13 @@ TEST(BatchSolve, Strategy)
     std::string opening = "slate";
     float aveGuesses0 = TestWords(solutionWords, guessingWords, opening, entropy);
     float aveGuesses1 = TestWords(solutionWords, guessingWords, opening, blended);
-    float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
+    //float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
     float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, groups);
 
 
     std::cout << "Ave guesses for entropy strategy: " << aveGuesses0 << std::endl;
     std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
-    std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
+    //std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
     std::cout << "Ave guesses for groups strategy: " << aveGuesses3 << std::endl;
 
     // With NYT dictionary and slate as the starting word...
@@ -517,6 +517,11 @@ TEST(BatchSolve, Strategy)
     // Ave guesses for blended strategy : 3.52803
     // Ave guesses for search strategy : 3.5246
     // Ave guesses for groups strategy : 3.4908
+
+    // 2/24/2024 - It took 85 minutes to run
+    // Ave guesses for entropy strategy : 3.65783
+    // Ave guesses for blended strategy : 3.53636
+    // Ave guesses for groups strategy : 3.52267
 }
 
 TEST(BatchSolve, TestOpeningWords)
