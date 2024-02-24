@@ -117,8 +117,11 @@ std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWor
     return str;
 }
 
-size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords)
+size_t ScoreGroupCount(const std::string& guessWord,
+                       const std::vector<std::string>& solutionWords,
+                       size_t &largestGroup)
 {
+    largestGroup = 0;
     // This guess separates the remaining solutions into groups according to a common board score
     std::unordered_map<ScoredWord, size_t, ScoredWordHash, ScoredWordEqual> groups;
     for (auto const& possibleSolution : solutionWords)
@@ -126,6 +129,13 @@ size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::stri
         ScoredWord s = Score(possibleSolution, guessWord);
         std::string str = s.ToString(guessWord);
         groups[s]++;
+    }
+    for (const auto &group : groups)
+    {
+        if (group.second > largestGroup)
+        {
+            largestGroup = group.second;
+        }
     }
 
     return groups.size();

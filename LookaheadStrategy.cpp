@@ -41,6 +41,7 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
     {
         auto wordScores = ScoresByGuess( guessWord, solutionWords);
 
+        size_t totalSearchSpace = 0;
         for (auto sc : wordScores)
         {
             board.PushScoredGuess(guessWord, sc);
@@ -54,12 +55,13 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
 
             board.Pop();
 
-            if (result.totalSize < minSearchSpace)
-            {
-                minSearchSpace = result.totalSize;
-                bestGuess.first = guessWord;
-                bestGuess.second = result.totalSize;
-            }
+            totalSearchSpace += result.totalSize;
+        }
+        if (totalSearchSpace < minSearchSpace)
+        {
+            minSearchSpace = totalSearchSpace;
+            bestGuess.first = guessWord;
+            bestGuess.second = totalSearchSpace;
         }
     }
 
@@ -97,6 +99,8 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
     {
         auto wordScores = ScoresByGuess( guessWord, solutionWords);
 
+        std::cout << "Guess : " << guessWord;
+        size_t totalSearchSpace = 0;
         // Recurse on the scores that are possible from the chosen guess
         // How to define the search space? It can't be every possible guess against
         // every possible solution. That explodes too fast to search ahead several guesses.
@@ -104,6 +108,7 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
         // scores that could be returned
         for (auto sc : wordScores)
         {
+            std::cout << " " << sc.ToString(guessWord);
             board.PushScoredGuess(guessWord, sc);
 
             WordQuery query = board.GenerateQuery();
@@ -115,8 +120,10 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
 
             board.Pop();
 
-            scoredGuesses.push_back( ScoredGuess( guessWord, result.totalSize));
+            totalSearchSpace += result.totalSize;
          }
+        std::cout << std::endl;
+        scoredGuesses.push_back( ScoredGuess( guessWord, totalSearchSpace));
     }
 
     // Remove duplicate guesses by string

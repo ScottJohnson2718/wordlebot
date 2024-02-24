@@ -92,7 +92,7 @@ std::string ScoreString(const std::string &solution, const std::string &guess);
 std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);
 
 // Return the number of score groups the given guess breaks the solutions into.
-size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords);
+size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords, size_t &largestGroup);
 // Return the solution words that all have the same score as the target score
 std::vector<std::string> ScoreGroup(const std::string& guessWord, const ScoredWord& target,
     const std::vector < std::string>& solutionWords);

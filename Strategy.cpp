@@ -292,16 +292,16 @@ ScoredGuess ScoreGroupingStrategy::BestGuess(Board& board,
     
     ScoredGuess bestGuess;
     size_t mostGroups = 0;
-
+    size_t largestGroup = 0;
     for (auto const& guessWord : guessingWords_)
     {
-        size_t groupCount = ScoreGroupCount(guessWord, solutionWords);
+        size_t groupCount = ScoreGroupCount(guessWord, solutionWords, largestGroup);
 
         if (groupCount > mostGroups)
         {
             mostGroups = groupCount;
             bestGuess.first = guessWord;
-            bestGuess.second = (float) mostGroups;
+            bestGuess.second = ((float) mostGroups) + (float) 1.0f / (float) largestGroup;
         }
     }
 
@@ -325,16 +325,18 @@ std::vector<ScoredGuess> ScoreGroupingStrategy::BestGuesses(Board& board,
         return scoredGuesses;
     }
 
-    size_t mostGroups = 0;
+    size_t largestGroup = 0;
     for (auto const& guessWord : guessingWords_)
     {
-        size_t groupCount = ScoreGroupCount(guessWord, solutionWords);
+        size_t groupCount = ScoreGroupCount(guessWord, solutionWords, largestGroup);
 
-        scoredGuesses.push_back(ScoredGuess(guessWord, (float)groupCount));
-        if (groupCount > mostGroups)
+        float s = (float) groupCount + 1.0f / (float) largestGroup;
+        if (std::binary_search(solutionWords.begin(), solutionWords.end(), guessWord))
         {
-            mostGroups = groupCount;
+            // Solution words get a bonus. This must happen before they are sorted and the top ones returned
+            s += 1.0;
         }
+        scoredGuesses.push_back(ScoredGuess(guessWord, s));
     }
 
     std::vector< ScoredGuess > topGuessesByScore;
