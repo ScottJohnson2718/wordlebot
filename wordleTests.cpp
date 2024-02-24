@@ -181,7 +181,8 @@ TEST( Score, Scram)
 TEST( Score, Local)
 {
     auto scoredWord = Score("vocal", "local");
-    std::string str = scoredWord.ToString("local");
+    std::string str = scoredWord.ToString("local"); // ".ocal"
+    std::cout << str << std::endl;
     Board board(5);
     board.PushScoredGuess("local", scoredWord);
     auto query = board.GenerateQuery();
