@@ -56,13 +56,17 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
     ScoredGuess guess;
     std::vector<std::string> remaining = remainingSolutions;
 
+    if (verbose_)
+    {
+        std::cout << "Solving for word " << hiddenSolution << std::endl;
+    }
     while (true)
     {
         if (remaining.empty())
         {
             // Either the solution is not in the dictionary or there was a contradiction in the board
             std::cerr << "No solution for word " << hiddenSolution << std::endl;
-            return 0;
+            return 100000;  // ruin the overall statistics of any strategy that fails
         }
         else if (remaining.size() <= 2)
         {
@@ -73,9 +77,9 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
             if (remaining.size() > 1) {
                 remaining[0] = remaining[1];
                 remaining.pop_back();
+                if (verbose_)
+                    std::cout << "Best guess : " << guess.first << " with " << remaining.size() << " left" << std::endl;
             }
-            if (verbose_)
-                std::cout << "Best guess : " << guess.first << " with " << remaining.size() << " left" << std::endl;
             ScoredWord score = Score(hiddenSolution, guess.first);
             board.PushScoredGuess(guess.first, score);
         }

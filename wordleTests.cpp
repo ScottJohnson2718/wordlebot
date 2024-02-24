@@ -264,6 +264,15 @@ TEST(WordQuery, TempsBug)
     EXPECT_LT(remaining.size(), 3);
 }
 
+TEST(Score, Local)
+{
+    auto scoredWord = Score("vocal", "local");
+    std::string str = scoredWord.ToString("local");
+    Board board(5);
+    board.PushScoredGuess("local", scoredWord);
+    auto query = board.GenerateQuery();
+    EXPECT_FALSE(query.Satisfies("local"));
+}
 
 // At one point, this interactive session was returning the guess "eager" 
 // over and over
@@ -326,6 +335,14 @@ TEST_F(LionStudiosFiveLetter, SinglePuzzles)
             EXPECT_LE(guessCount, 6);
         }
     }
+}
+
+TEST_F(LionStudiosFiveLetter, Votes)
+{
+    Bot bot(guessingWords, solutionWords, *entropy, true);
+    int guessCount = bot.SolvePuzzle("votes", "slate");
+    EXPECT_NE(guessCount, 0);
+    EXPECT_LE(guessCount, 6);
 }
 
 TEST_F(NewYorkTimesFiveLetter, SinglePuzzlesEntropyStrategy)
@@ -452,7 +469,7 @@ TEST(BatchSolve, Strategy)
     float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, groups);
 
 
-    std::cout << "Ave guesses for entropy only strategy: " << aveGuesses0 << std::endl;
+    std::cout << "Ave guesses for entropy strategy: " << aveGuesses0 << std::endl;
     std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
     std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
     std::cout << "Ave guesses for groups strategy: " << aveGuesses3 << std::endl;

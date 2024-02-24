@@ -117,7 +117,7 @@ std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWor
     return str;
 }
 
-size_t ScoreGroupCount(const std::string& guessWord, std::vector<std::string>& solutionWords)
+size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords)
 {
     // This guess separates the remaining solutions into groups according to a common board score
     std::unordered_map<ScoredWord, size_t, ScoredWordHash, ScoredWordEqual> groups;
@@ -134,7 +134,7 @@ size_t ScoreGroupCount(const std::string& guessWord, std::vector<std::string>& s
 std::vector<std::string> ScoreGroup(
     const std::string& guessWord,
     const ScoredWord& score,
-    std::vector < std::string>& solutionWords)
+    const std::vector < std::string>& solutionWords)
 {
     std::vector<std::string> remaining;
 
