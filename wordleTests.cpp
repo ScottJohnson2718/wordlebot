@@ -147,6 +147,27 @@ TEST( Wordle, Globe)
     int guessCount = bot.SolvePuzzle("globe", "stale");
     EXPECT_NE( guessCount, 0);
     EXPECT_LE( guessCount, 6);
+
+    guessCount = bot.SolvePuzzle( "temes", "slate");
+
+}
+
+TEST( Wordle, Temps)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+    ScoreGroupingStrategy strategy(guessingWords, 10);
+    Bot bot(guessingWords, solutionWords, strategy, true);
+
+    int guessCount = bot.SolvePuzzle("temps", "slate");
+    EXPECT_NE( guessCount, 0);
+    EXPECT_LE( guessCount, 6);
+
+    // ./wordlebot --dict .. slate "S..TE" meres "Me..s" eager "E...."
+//#error "Temps was not solved interactively. It kept suggesting the guess eager"
 }
 
 TEST( Score, Scram)
@@ -155,6 +176,16 @@ TEST( Score, Scram)
     std::stringstream str;
     print(str, "trace", scoredWord);
     EXPECT_EQ( str.str(), std::string(".RAC."));
+}
+
+TEST( Score, Local)
+{
+    auto scoredWord = Score("vocal", "local");
+    std::string str = scoredWord.ToString("local");
+    Board board(5);
+    board.PushScoredGuess("local", scoredWord);
+    auto query = board.GenerateQuery();
+    EXPECT_FALSE(query.Satisfies("local"));
 }
 
 TEST( RemoveDups, Test1)
