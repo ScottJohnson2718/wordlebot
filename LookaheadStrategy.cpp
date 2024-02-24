@@ -23,11 +23,6 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
         return ScoredGuess(solutionWords[0], 1);
     }
 
-    if (solutionWords.size() > 150)
-    {
-        return subStrategy_.BestGuess(board, solutionWords);
-    }
-
     std::vector<ScoredGuess> scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
     prunedGuessWords.reserve(scoredGuesses.size());
@@ -44,47 +39,27 @@ ScoredGuess LookaheadStrategy::BestGuess(Board& board,
 
     for (auto const& guessWord : prunedGuessWords)
     {
-        size_t totalSearchSpacePerGuess = 0;
+        auto wordScores = ScoresByGuess( guessWord, solutionWords);
 
-        // This guess separates the remaining solutions into groups according to a common board score
-        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
-        for (auto const &possibleSolution: solutionWords)
+        for (auto sc : wordScores)
         {
-            ScoredWord s = Score(possibleSolution, guessWord);
-            auto iter = groups.find(s);
-            if (iter == groups.end()) {
-                auto strList = std::make_shared<std::vector<std::string>>();
-                strList->push_back(possibleSolution);
-                groups[s] = strList;
-            } else {
-                iter->second->push_back(possibleSolution);
-            }
-        }
+            board.PushScoredGuess(guessWord, sc);
 
-        // Process the groups of solution words
-        for (auto &p: groups)
-        {
-            const std::vector<std::string> &remaining = *p.second;
+            WordQuery query = board.GenerateQuery();
+            auto prunedSolutions = PruneSearchSpace( query, solutionWords );
 
-            Bot slaveBot(guessingWords_, remaining, subStrategy_);
-
-            // All the solutions in this group have the same score. So apply the scored guess to the board
-            // We don't prune the solutions, they have been partitioned instead.
-            board.PushScoredGuess(guessWord, p.first);
-
-            // Do a full search of the remaining space.
             Bot::SearchResult result;
-            slaveBot.Search(board, remaining, result);
+            Bot bot( prunedGuessWords, prunedSolutions, subStrategy_);
+            bot.Search(board, prunedSolutions, result);
 
             board.Pop();
 
-            totalSearchSpacePerGuess += result.totalSize;
-        }
-        if (totalSearchSpacePerGuess < minSearchSpace)
-        {
-            minSearchSpace = totalSearchSpacePerGuess;
-            bestGuess.first = guessWord;
-            bestGuess.second = totalSearchSpacePerGuess;
+            if (result.totalSize < minSearchSpace)
+            {
+                minSearchSpace = result.totalSize;
+                bestGuess.first = guessWord;
+                bestGuess.second = result.totalSize;
+            }
         }
     }
 
@@ -101,11 +76,7 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
         return scoredGuesses;
     }
 
-    if (solutionWords.size() > 200)
-    {
-        return subStrategy_.BestGuesses(board, solutionWords);
-    }
-
+    // The point of this is that we don't do all kinds of searching on dumb guesses.
     scoredGuesses = subStrategy_.BestGuesses(board, solutionWords);
     std::vector<std::string> prunedGuessWords;
     for (auto const& scoredGuess : scoredGuesses)
@@ -116,39 +87,36 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
     }
     scoredGuesses.clear();
 
+    // let's be reasonable about how many iterations we intend to do
+    //if (prunedGuessWords.size() * solutionWords.size() > 500)
+    //{
+    //    return subStrategy_.BestGuesses(board, solutionWords);
+    //}
+
     for (auto const& guessWord : prunedGuessWords)
     {
-        size_t totalSearchSpacePerGuess = 0;
+        auto wordScores = ScoresByGuess( guessWord, solutionWords);
 
-        // This guess separates the remaining solutions into groups according to a common board score
-        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
-        for (auto const &possibleSolution: solutionWords)
+        // Recurse on the scores that are possible from the chosen guess
+        // How to define the search space? It can't be every possible guess against
+        // every possible solution. That explodes too fast to search ahead several guesses.
+        // This seems reasonable. We pick the best guess and iterate across the various
+        // scores that could be returned
+        for (auto sc : wordScores)
         {
-            ScoredWord s = Score(possibleSolution, guessWord);
-            auto iter = groups.find(s);
-            if (iter == groups.end()) {
-                auto strList = std::make_shared<std::vector<std::string>>();
-                strList->push_back(possibleSolution);
-                groups[s] = strList;
-            } else {
-                iter->second->push_back(possibleSolution);
-            }
-        }
+            board.PushScoredGuess(guessWord, sc);
 
-        // Process the groups of solution words
-        for (auto &p: groups)
-        {
-            const std::vector<std::string> &remaining = *p.second;
+            WordQuery query = board.GenerateQuery();
+            auto prunedSolutions = PruneSearchSpace( query, solutionWords );
 
-            Bot slaveBot(guessingWords_, remaining, subStrategy_);
-
-            // Do a full search of the remaining space
             Bot::SearchResult result;
-            slaveBot.Search(board, remaining, result);
+            Bot bot( prunedGuessWords, prunedSolutions, subStrategy_);
+            bot.Search(board, prunedSolutions, result);
 
-            totalSearchSpacePerGuess += result.totalSize;
-        }
-        scoredGuesses.push_back( ScoredGuess(guessWord, (float) totalSearchSpacePerGuess));
+            board.Pop();
+
+            scoredGuesses.push_back( ScoredGuess( guessWord, result.totalSize));
+         }
     }
 
     // Remove duplicate guesses by string

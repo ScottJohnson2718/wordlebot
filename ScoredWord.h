@@ -3,6 +3,8 @@
 
 #include "Wordle.h"
 
+#include <set>
+
 using ScoredGuess = std::pair< std::string, float >;
 struct ScoredWord;
 
@@ -94,3 +96,6 @@ size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::stri
 // Return the solution words that all have the same score as the target score
 std::vector<std::string> ScoreGroup(const std::string& guessWord, const ScoredWord& target,
     const std::vector < std::string>& solutionWords);
+
+std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,
+                                      const std::vector < std::string>& solutionWords );

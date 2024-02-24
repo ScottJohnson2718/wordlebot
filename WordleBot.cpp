@@ -150,44 +150,21 @@ void Bot::SearchRecurse(Board& board,
         auto bestScoredGuess = strategy_.BestGuess(board, remainingSolutions);
         std::string bestGuessWord = bestScoredGuess.first;
 
-        // Note that we picked this word.
-        //result.guessedWords.insert(bestScoredGuess.first);
+        auto wordScores = ScoresByGuess( bestGuessWord, remainingSolutions);
 
-        // This guess separates the remaining solutions into groups according to a common board score
-        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
-        for (auto const &possibleSolution: remainingSolutions)
+        // Recurse on the scores that are possible from the chosen guess
+        // How to define the search space? It can't be every possible guess against
+        // every possible solution. That explodes too fast to search ahead several guesses.
+        // This seems reasonable. We pick the best guess and iterate across the various
+        // scores that could be returned
+        for (auto sc : wordScores)
         {
-            ScoredWord s = Score(possibleSolution, bestGuessWord);
-            auto iter = groups.find(s);
-            if (iter == groups.end())
-            {
-                auto strList = std::make_shared<std::vector<std::string>>();
-                strList->push_back(possibleSolution);
-                groups[s] = strList;
-            }
-            else
-            {
-                iter->second->push_back(possibleSolution);
-            }
-        }
+            board.PushScoredGuess(bestGuessWord, sc);
 
-//        int groupIndex  =0;
-//        for (auto const &p : groups)
-//        {
-//            std::cout << groupIndex++ << " : ";
-//            for (auto const &str : *p.second)
-//            {
-//                std::cout << str << " ";
-//            }
-//            std::cout << std::endl;
-//        }
+            WordQuery query = board.GenerateQuery();
+            auto pruned = PruneSearchSpace( query, remainingSolutions );
 
-        // Recurse on the groups of solution words
-        for (auto &p: groups)
-        {
-            board.PushScoredGuess(bestGuessWord, p.first);
-
-            SearchRecurse(board, *p.second, result);
+            SearchRecurse(board, pruned, result);
 
             board.Pop();
         }

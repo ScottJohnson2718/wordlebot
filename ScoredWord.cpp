@@ -149,3 +149,16 @@ std::vector<std::string> ScoreGroup(
     }
     return remaining;
 }
+
+std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,
+                                      const std::vector < std::string>& solutionWords )
+{
+    std::set< ScoredWord > wordScores;
+
+    for (auto const& possibleSolution : solutionWords)
+    {
+        ScoredWord s = Score(possibleSolution, guessWord);
+        wordScores.insert(s);
+    }
+    return wordScores;
+}
