@@ -94,13 +94,21 @@ WordQuery Board::GenerateQuery() const
         {
             CharScore scoreChar = score[charIndex];
             uint32_t charMask = (1 << (guess[charIndex] - 'a'));
-            if (  (scoreChar == NotPresent) && 
-                ((charMask & correctMask) == 0) &&
-                ((charMask & query.mustContain) == 0)) 
+            if (scoreChar == NotPresent)
             {
-                // Set that the char is not present in the word anywhere.
-                query.SetCantContain(guess[charIndex]);
-            }
+                if (((charMask & correctMask) == 0) &&
+                    ((charMask & query.mustContain) == 0))
+                {
+                    // Set that the char is not present in the word anywhere.
+                    query.SetCantContain(guess[charIndex]);
+                }
+                else
+                {
+                    // Set that the char can't be at this particular index
+                    query.SetCantContain(charIndex, guess[charIndex]);
+                }
+            } 
+               
         }
     }
     return query;

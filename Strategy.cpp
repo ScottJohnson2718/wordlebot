@@ -295,22 +295,23 @@ ScoredGuess ScoreGroupingStrategy::BestGuess(Board& board,
 
     for (auto const& guessWord : guessingWords_)
     {
-        // This guess separates the remaining solutions into groups according to a common board score
-        std::unordered_map<ScoredWord, size_t, ScoredWordHash, ScoredWordEqual> groups;
-        for (auto const& possibleSolution : solutionWords)
-        {
-            ScoredWord s = Score(possibleSolution, guessWord);
-            groups[s]++;
-        }
+        size_t groupCount = ScoreGroupCount(guessWord, solutionWords);
 
-        if (groups.size() > mostGroups)
+        if (groupCount > mostGroups)
         {
-            mostGroups = groups.size();
+            mostGroups = groupCount;
             bestGuess.first = guessWord;
             bestGuess.second = (float) mostGroups;
         }
     }
 
+    //if (solutionWords.size() <= mostGroups)
+    //{
+    //    // The guessing words didn't partition into groups any better than the solutions
+    //   // themselves.
+    //    bestGuess.first = solutionWords[0];
+    //    bestGuess.second = 1.0;
+    //}
     return bestGuess;
 }
 
@@ -324,43 +325,45 @@ std::vector<ScoredGuess> ScoreGroupingStrategy::BestGuesses(Board& board,
         return scoredGuesses;
     }
 
+    size_t mostGroups = 0;
     for (auto const& guessWord : guessingWords_)
     {
-         // This guess separates the remaining solutions into groups according to a common board score
-        std::map<ScoredWord, std::shared_ptr<std::vector<std::string>>> groups;
-        for (auto const& possibleSolution : solutionWords)
-        {
-            ScoredWord s = Score(possibleSolution, guessWord);
-            auto iter = groups.find(s);
-            if (iter == groups.end()) {
-                auto strList = std::make_shared<std::vector<std::string>>();
-                strList->push_back(possibleSolution);
-                groups[s] = strList;
-            }
-            else {
-                iter->second->push_back(possibleSolution);
-            }
-        }
+        size_t groupCount = ScoreGroupCount(guessWord, solutionWords);
 
-        scoredGuesses.push_back(ScoredGuess(guessWord, (float)groups.size()));
+        scoredGuesses.push_back(ScoredGuess(guessWord, (float)groupCount));
+        if (groupCount > mostGroups)
+        {
+            mostGroups = groupCount;
+        }
     }
-
-    // Remove duplicate guesses by string
-    RemoveDuplicateGuesses(scoredGuesses);
-
-    // Sort them big to small
-    std::sort(scoredGuesses.begin(), scoredGuesses.end(),
-        [](const ScoredGuess& a, const ScoredGuess& b)
-        {
-            return a.second > b.second;
-        }
-    );
 
     std::vector< ScoredGuess > topGuessesByScore;
-    for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
+    //if (solutionWords.size() <= mostGroups)
+    //{
+    //    // The guessing words didn't partition into groups any better than the solutions
+    //    // themselves.
+    //    for (int i = 0; i < std::min(maxGuessesReturned_, solutionWords.size()); ++i)
+    //    {
+    //        topGuessesByScore.push_back(ScoredGuess(solutionWords[i], 1.0));
+    //    }
+    //}
+    //else
     {
-        topGuessesByScore.push_back(scoredGuesses[i]);
-    }
+        // Remove duplicate guesses by string
+        RemoveDuplicateGuesses(scoredGuesses);
 
+        // Sort them big to small
+        std::sort(scoredGuesses.begin(), scoredGuesses.end(),
+            [](const ScoredGuess& a, const ScoredGuess& b)
+            {
+                return a.second > b.second;
+            }
+        );
+
+        for (int i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i)
+        {
+            topGuessesByScore.push_back(scoredGuesses[i]);
+        }
+    }
     return topGuessesByScore;
 }
