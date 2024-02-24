@@ -199,6 +199,7 @@ protected:
         scoreGrouping = new ScoreGroupingStrategy(guessingWords, 10);
         search = new SearchStrategy(guessingWords, 10);
         entropy = new EntropyStrategy(guessingWords, 10);
+        lookahead = new LookaheadStrategy( *scoreGrouping, guessingWords, 10);
 
         strategies.push_back(scoreGrouping);
         strategies.push_back(search);
@@ -210,6 +211,7 @@ protected:
         delete scoreGrouping;
         delete search;
         delete entropy;
+        delete lookahead;
     }
 
     std::vector<std::string> solutionWords;
@@ -218,6 +220,7 @@ protected:
     ScoreGroupingStrategy* scoreGrouping;
     SearchStrategy* search;
     EntropyStrategy* entropy;
+    LookaheadStrategy* lookahead;
 
     std::vector< Strategy*> strategies;
 };
@@ -340,6 +343,14 @@ TEST_F(LionStudiosFiveLetter, SinglePuzzles)
 TEST_F(LionStudiosFiveLetter, Votes)
 {
     Bot bot(guessingWords, solutionWords, *entropy, true);
+    int guessCount = bot.SolvePuzzle("votes", "slate");
+    EXPECT_NE(guessCount, 0);
+    EXPECT_LE(guessCount, 6);
+}
+
+TEST_F(LionStudiosFiveLetter, Votes_Lookahead)
+{
+    Bot bot(guessingWords, solutionWords, *lookahead, true);
     int guessCount = bot.SolvePuzzle("votes", "slate");
     EXPECT_NE(guessCount, 0);
     EXPECT_LE(guessCount, 6);
