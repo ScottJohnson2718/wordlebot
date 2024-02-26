@@ -43,10 +43,10 @@ struct WordQuery
     // No character can contain the character ch
     void SetCantContain(char ch)
     {
-        ch = tolower(ch);
+        int charIndex = tolower(ch) - 'a';
         for (int i = 0; i < n; ++i)
-            cantContain[i] |= (1 << (ch - 'a'));
-        maxOverall[ch] = 0;
+            cantContain[i] |= (1 << charIndex);
+        maxOverall[charIndex] = 0;
     }
 
     // The given character index cannot contain the given character
@@ -58,9 +58,10 @@ struct WordQuery
 
      void SetMustContain( char ch )
     {
-        ch = tolower(ch);
-        mustContain |= (1 << (ch - 'a'));
-        minOverall[ch] = 1;
+        int charIndex = tolower(ch) - 'a';
+        mustContain |= (1 << charIndex);
+        
+        minOverall[charIndex] = std::min(minOverall[charIndex], 1);
     }
 
     void SetCorrect( int charIndex, char ch)
