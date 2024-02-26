@@ -5,6 +5,10 @@
 #include <vector>
 #include <array>
 
+using LetterCount = std::array<int,26>;
+
+LetterCount CountLetters( const std::string &word);
+
 struct WordQuery
 {
     WordQuery(int _n)
@@ -13,6 +17,11 @@ struct WordQuery
             , correct(std::string(n, '.'))
     {
         cantContain.resize(n);
+        for (int i = 0; i < 26; ++i)
+        {
+            minOverall[i] = 0;
+            maxOverall[i] = n;
+        }
     }
 
     int n;  // character count per word
@@ -21,6 +30,11 @@ struct WordQuery
     uint32_t mustContain;
     // Per character, a mask of the letters it cant contain.
     std::vector<uint32_t> cantContain;
+
+    // Min and max for overall word. This handles the requirement that some letters
+    // have a minimum required count and a maximum required count overall in the word.
+    LetterCount minOverall;
+    LetterCount maxOverall;
 
     // List of characters in the correct place.
     // A dot means a blank space
@@ -32,6 +46,7 @@ struct WordQuery
         ch = tolower(ch);
         for (int i = 0; i < n; ++i)
             cantContain[i] |= (1 << (ch - 'a'));
+        maxOverall[ch] = 0;
     }
 
     // The given character index cannot contain the given character
@@ -45,6 +60,7 @@ struct WordQuery
     {
         ch = tolower(ch);
         mustContain |= (1 << (ch - 'a'));
+        minOverall[ch] = 1;
     }
 
     void SetCorrect( int charIndex, char ch)
@@ -52,6 +68,17 @@ struct WordQuery
         ch = tolower(ch);
         correct[charIndex] = ch;
         mustContain |= (1 << (ch - 'a'));
+        minOverall[ch] = std::min(minOverall[ch], 1);
+    }
+
+    void SetMinimumLetterCount( int count, char ch)
+    {
+        minOverall[ch] = count;
+    }
+
+    void SetMaximumLetterCount( int count, char ch)
+    {
+        maxOverall[ch] = count;
     }
 
     bool Satisfies(const std::string &word) const
@@ -74,6 +101,15 @@ struct WordQuery
         // The word must contain all the characters in the mustContain mask
         if ((mustContain & wordMask) != mustContain)
             return false;
+
+        LetterCount letterCount = CountLetters(word);
+        for (int i = 0; i < 26; ++i)
+        {
+            if (letterCount[i] < minOverall[i])
+                return false;
+            if (letterCount[i] > maxOverall[i])
+                return false;
+        }
 
         return true;
     }

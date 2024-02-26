@@ -107,8 +107,26 @@ WordQuery Board::GenerateQuery() const
                     // Set that the char can't be at this particular index
                     query.SetCantContain(charIndex, guess[charIndex]);
                 }
-            } 
-               
+            }
+        }
+        LetterCount guessLetterCount = CountLetters(guess);
+        LetterCount scoreLetterCount = CountLetters( score.ToString(guess));
+        for (int i = 0; i < 26; ++i)
+        {
+            if (guessLetterCount[i] > 0)
+            {
+                if (guessLetterCount[i] > scoreLetterCount[i])
+                {
+                    // The score letter count is the exact number of that letter
+                    // in the solution
+                    query.SetMinimumLetterCount(scoreLetterCount[i], i);
+                    query.SetMaximumLetterCount(scoreLetterCount[i], i);
+                }
+                else if (guessLetterCount[i] == scoreLetterCount[i])
+                {
+                    query.SetMinimumLetterCount( scoreLetterCount[i], i);
+                }
+            }
         }
     }
     return query;

@@ -188,6 +188,17 @@ TEST(WordQuery, DoubleLetter)
     EXPECT_FALSE(query.Satisfies("cable"));   // fails. No 'b' in correct place.
 }
 
+TEST(WordQuery, DoubleLetter2)
+{
+    // slate "SLAt." shuns "S...s"
+    Board board(5);
+    board.PushScoredGuess("shuns", ScoredWord("S...s"));    // solution was "lasts"
+    auto query = board.GenerateQuery();
+
+    EXPECT_TRUE(query.Satisfies("lasts"));
+    EXPECT_FALSE(query.Satisfies("malts")); // minimum of two 's's.
+}
+
 class LionStudiosFiveLetter : public testing::Test
 {
 protected:
@@ -251,7 +262,8 @@ TEST(WordQuery, TempsBug)
     // "teems" -> ".ee.s"
     // "temes" -> ".eE.s"
     // "temps" -> ".e..s"
-    size_t groups = ScoreGroupCount(guess, solutions);
+    size_t largestGroup(0);
+    size_t groups = ScoreGroupCount(guess, solutions, largestGroup);
     auto remaining = ScoreGroup(guess, sw, solutions);
 
     // But guessing 'feels' doesn't reduce the search space to 1. It just
