@@ -273,7 +273,7 @@ TEST(WordQuery, TempsBug)
     remaining = PruneSearchSpace(query, solutions);
 
     EXPECT_FALSE(query.Satisfies("teems"));  // position 2 can't be an 'e'
-    EXPECT_TRUE(query.Satisfies("temes"));  // passes
+    EXPECT_FALSE(query.Satisfies("temes"));  // must have exactly one 'e'
     EXPECT_TRUE(query.Satisfies("temps"));   // passes 
 
     EXPECT_LT(remaining.size(), 3);

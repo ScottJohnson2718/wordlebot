@@ -69,7 +69,7 @@ struct WordQuery
         ch = tolower(ch);
         correct[charIndex] = ch;
         mustContain |= (1 << (ch - 'a'));
-        minOverall[ch] = std::min(minOverall[ch], 1);
+        minOverall[ch - 'a'] = std::min(minOverall[ch - 'a'], 1);
     }
 
     void SetMinimumLetterCount( int count, char ch)
