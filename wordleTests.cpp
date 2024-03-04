@@ -354,7 +354,7 @@ TEST_F(LionStudiosFiveLetter, SinglePuzzles)
 
 TEST_F(LionStudiosFiveLetter, Votes)
 {
-    Bot bot(guessingWords, solutionWords, *entropy, true);
+    Bot bot(guessingWords, solutionWords, *scoreGrouping, true);
     int guessCount = bot.SolvePuzzle("votes", "slate");
     EXPECT_NE(guessCount, 0);
     EXPECT_LE(guessCount, 6);

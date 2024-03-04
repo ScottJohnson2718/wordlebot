@@ -162,9 +162,12 @@ void Bot::SearchRecurse(Board& board,
             board.PushScoredGuess(bestGuessWord, sc);
 
             WordQuery query = board.GenerateQuery();
+            size_t size = remainingSolutions.size();
             auto pruned = PruneSearchSpace( query, remainingSolutions );
-
-            SearchRecurse(board, pruned, result);
+            if (pruned.size() < size)
+            {
+                SearchRecurse(board, pruned, result);
+            }
 
             board.Pop();
         }

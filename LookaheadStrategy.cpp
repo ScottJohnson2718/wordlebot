@@ -87,13 +87,16 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
 
         prunedGuessWords.push_back(guessWord);
     }
+    // Don't prune out the actual guess words.
+    std::copy( solutionWords.begin(), solutionWords.end(), std::back_inserter(prunedGuessWords));
     scoredGuesses.clear();
 
     // let's be reasonable about how many iterations we intend to do
-    //if (prunedGuessWords.size() * solutionWords.size() > 500)
-    //{
-    //    return subStrategy_.BestGuesses(board, solutionWords);
-    //}
+    if (prunedGuessWords.size() * solutionWords.size() > 5000)
+    {
+        std::cout << "Used substrategy because guesses * solutionWords was " << prunedGuessWords.size() * solutionWords.size() << std::endl;
+        return subStrategy_.BestGuesses(board, solutionWords);
+    }
 
     for (auto const& guessWord : prunedGuessWords)
     {
@@ -101,11 +104,8 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
 
         std::cout << "Guess : " << guessWord;
         size_t totalSearchSpace = 0;
+        size_t maxDepth = 0;
         // Recurse on the scores that are possible from the chosen guess
-        // How to define the search space? It can't be every possible guess against
-        // every possible solution. That explodes too fast to search ahead several guesses.
-        // This seems reasonable. We pick the best guess and iterate across the various
-        // scores that could be returned
         for (auto sc : wordScores)
         {
             std::cout << " " << sc.ToString(guessWord);
@@ -120,10 +120,18 @@ std::vector<ScoredGuess> LookaheadStrategy::BestGuesses(Board& board,
 
             board.Pop();
 
+            if (maxDepth < result.maxDepth)
+                maxDepth = result.maxDepth;
             totalSearchSpace += result.totalSize;
-         }
-        std::cout << std::endl;
-        scoredGuesses.push_back( ScoredGuess( guessWord, totalSearchSpace));
+        }
+        float s = (float) totalSearchSpace - 0.5f *  maxDepth;
+        if (std::binary_search(solutionWords.begin(), solutionWords.end(), guessWord))
+        {
+            // Solution words get a bonus. This must happen before they are sorted and the top ones returned
+            s -= 1.0;
+        }
+        std::cout <<  " " << s << std::endl;
+        scoredGuesses.push_back( ScoredGuess( guessWord, s));
     }
 
     // Remove duplicate guesses by string

@@ -63,8 +63,9 @@ int main(int argc, char *argv[])
             std::vector<std::string> guessingWords;
             std::vector<std::string> solutionWords;
             LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
-            ScoreGroupingStrategy strat(guessingWords, 10);
-            Bot bot(guessingWords, solutionWords, strat, true);
+            ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
+            //LookaheadStrategy lookahead( scoreGrouping, guessingWords, 20);
+            Bot bot(guessingWords, solutionWords, scoreGrouping, true);
             bot.SolvePuzzle(solution, "slate");
             std::cout << std::endl;
             return 0;
@@ -108,8 +109,8 @@ int main(int argc, char *argv[])
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
     //EntropyStrategy entropyStrategy(guessingWords, 50);
-    ScoreGroupingStrategy strategy(guessingWords, 10);
-    //LookaheadStrategy strategy(scoreGrouping,guessingWords, 10);
+    ScoreGroupingStrategy scoreGroupingStrategy(guessingWords, 30);
+    LookaheadStrategy strategy(scoreGroupingStrategy,guessingWords, 10);
 
     WordQuery query = board.GenerateQuery();
 
