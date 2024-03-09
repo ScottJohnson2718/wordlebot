@@ -109,8 +109,8 @@ int main(int argc, char *argv[])
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
     //EntropyStrategy entropyStrategy(guessingWords, 50);
-    ScoreGroupingStrategy scoreGroupingStrategy(guessingWords, 30);
-    LookaheadStrategy strategy(scoreGroupingStrategy,guessingWords, 10);
+    ScoreGroupingStrategy strategy(guessingWords, 10);
+    //LookaheadStrategy strategy(scoreGroupingStrategy,guessingWords, 10);
 
     WordQuery query = board.GenerateQuery();
 
