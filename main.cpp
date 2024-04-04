@@ -72,7 +72,22 @@ int main(int argc, char *argv[])
         }
 
         std::string guess = argv[tokenIndex];
-        std::string score = argv[tokenIndex+1];
+        std::string score;
+        if (tokenIndex + 1 < argc)
+        {
+            score = argv[tokenIndex + 1];
+        }
+        else
+        {
+            std::cout << "Guess " << guess << " needs a score as the next parameter.\n" <<
+            "The score is a string that reflects the colored letters returned for the guess\n" <<
+            "green - use a lower case letter\n" <<
+            "yellow - use an upper case letter\n" <<
+            "gray - use a period character\n" <<
+            "example : guess 'slate' is scored with green 's' and yellow 'l' and the rest of the letters are gray.\n" <<
+            "Score would be 'sL...'" << std::endl;
+            exit(1);
+        }
 
         std::cout << "Guessed : " << guess << " with score " << score << std::endl;
 
