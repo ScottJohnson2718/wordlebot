@@ -6,80 +6,65 @@
 #include <unordered_map>
 
 // LetterCount is the count of each letter in the alphabet for a given word
-using LetterCount = std::array<int, 26>;
+//using LetterCount = std::array<int, 26>;
 
-void CreateLetterTable(const std::string &word, LetterCount &letterTable)
+//void CreateLetterTable(const std::string &word, LetterCount &letterTable)
+//{
+//    std::fill(letterTable.begin(), letterTable.end(), 0);
+//    for (int i = 0; i < word.size(); ++i)
+//    {
+//        int idx = tolower(word[i]) - 'a';
+//        letterTable[idx]++;
+//    }
+//}
+
+bool Contains(const std::string &str, const char ch, int &foundIndex)
 {
-    std::fill(letterTable.begin(), letterTable.end(), 0);
-    for (int i = 0; i < word.size(); ++i)
+    bool found = false;
+    for (size_t i = 0; i < str.size(); ++i)
     {
-        int idx = tolower(word[i]) - 'a';
-        letterTable[idx]++;
+        if (str[i] == ch)
+        {
+            foundIndex = i;
+            return true;
+        }
     }
+    return false;
 }
 
 ScoredWord Score(const std::string& solution, const std::string& guess)
 {
-    LetterCount solutionLT;
-    CreateLetterTable(solution, solutionLT);
-
+    std::string mutableSolution(solution);
+    std::string mutableGuess(guess);
+    const char *pSolution = mutableSolution.c_str();
+    const char *pGuess = guess.c_str();
     ScoredWord score;
     for (int i = 0; i < solution.size(); ++i)
     {
-        if (guess[i] == solution[i])
+        if (pGuess[i] == pSolution[i])
         {
-            int idx = guess[i] - 'a';
             score.Set(i, Correct);
-            solutionLT[idx]--;
+            mutableSolution[i] = '.';
+            mutableGuess[i] = '.';
         }
     }
     for (int i = 0; i < solution.size(); ++i)
     {
-        int idx = guess[i] - 'a';
-
-        if (score.Get(i) != Correct)
+        if (mutableGuess[i] == '.')
+            continue;
+        int foundIndex;
+        if (Contains(mutableSolution, guess[i], foundIndex))
         {
-            if (solutionLT[idx] > 0)
-            {
-                score.Set(i, CorrectNotHere);
-                solutionLT[idx]--;
-            }
-            else
-            {
-                score.Set(i, NotPresent);
-            }
+            score.Set(i, CorrectNotHere);
+            mutableSolution[foundIndex] = '.';
+        }
+        else
+        {
+            score.Set(i, NotPresent);
         }
     }
     return score;
 }
-
-//ScoredWord Score(const std::string& solution, const std::string& guess)
-//{
-//    ScoredWord score;
-//    uint32_t solutionMask = ComputeMask(solution);
-//
-//    for (int i = 0; i < solution.size(); ++i)
-//    {
-//        if (guess[i] == solution[i])
-//        {
-//            score.Set(i, Correct);
-//        }
-//        else
-//        {
-//            uint32_t charMask = 1 << (guess[i] - 'a');
-//
-//            if (charMask & solutionMask)
-//            {
-//                score.Set(i, CorrectNotHere);
-//            }
-//            else
-//            {
-//                score.Set(i, NotPresent);
-//            }
-//        }
-//    }
-//    return score;
-//}
 
 std::string ScoredWord::ToString(const std::string &guess) const
 {

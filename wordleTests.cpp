@@ -266,8 +266,9 @@ TEST(WordQuery, TempsBug)
     size_t groups = ScoreGroupCount(guess, solutions, largestGroup);
     auto remaining = ScoreGroup(guess, sw, solutions);
 
-    // But guessing 'feels' doesn't reduce the search space to 1. It just
-    // reduces it to 2.
+    // Guessing 'feels' reduces the search space to 1
+    // When using score grouping, it is not necessary to use a WordQuery and prune the solution words.
+    // That is unless the score groups were only counted and not enumerated.
     board.PushScoredGuess("feels", sw);
     auto query = board.GenerateQuery();
     remaining = PruneSearchSpace(query, solutions);
@@ -276,7 +277,7 @@ TEST(WordQuery, TempsBug)
     EXPECT_FALSE(query.Satisfies("temes"));  // must have exactly one 'e'
     EXPECT_TRUE(query.Satisfies("temps"));   // passes 
 
-    EXPECT_LT(remaining.size(), 3);
+    EXPECT_EQ(remaining.size(), 1);
 }
 
 TEST(Score, Local)

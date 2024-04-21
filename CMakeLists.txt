@@ -32,11 +32,16 @@ target_link_libraries(wordlebot PUBLIC WordleLib )
 add_executable(wordleTest wordleTests.cpp)
 target_link_libraries(wordleTest PUBLIC WordleLib GTest::gtest_main )
 
+message("compiler ID ${CMAKE_CXX_COMPILER_ID} ")
 #https://stackoverflow.com/questions/58578615/cannot-inspect-a-stdstring-variable-in-lldb
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     #if you want to see std::string in the debugger then you need this line
     # It still didn't work
-    add_compile_options(-fstandalone-debug -fno-limit-debug-info -stdlib=libc++)
+    add_compile_options(-fstandalone-debug -fno-limit-debug-info -stdlib=libstdc++)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
+    # This doesn't work either
+    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ")
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(-D_CRT_SECURE_NO_WARNINGS)
