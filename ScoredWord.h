@@ -60,6 +60,7 @@ struct ScoredWord
     }
 
     std::string ToString(const std::string &guess) const;
+    std::string ToStringColored(const std::string &guess) const;
 
     bool operator==(const ScoredWord& rhs) const
     {

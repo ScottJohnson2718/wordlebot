@@ -102,6 +102,30 @@ std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWor
     return str;
 }
 
+std::ostream& printColored(std::ostream &str, const std::string &guess, const ScoredWord &scored)
+{
+    for (int i = 0; i < guess.size(); ++i)
+    {
+        CharScore cs = scored.Get(i);
+        char ch = guess[i];
+
+        switch (cs)
+        {
+            case NotPresent:
+                str << "\033[37;100m" << ch;
+                break;
+            case Correct :
+                str << "\033[37;42m" << ch;
+                break;
+            case CorrectNotHere :
+                str << "\033[37;42m" << ch;
+                break;
+        }
+        str << "\033[37;42m";
+    }
+    return str;
+}
+
 size_t ScoreGroupCount(const std::string& guessWord,
                        const std::vector<std::string>& solutionWords,
                        size_t &largestGroup)
