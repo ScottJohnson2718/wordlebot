@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Wordle.h"
+#include <unordered_map>
 
 #include <set>
 
@@ -100,3 +101,13 @@ std::vector<std::string> ScoreGroup(const std::string& guessWord, const ScoredWo
 
 std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,
                                       const std::vector < std::string>& solutionWords );
+
+class WordScorer
+{
+public:
+    WordScorer(const std::vector<std::string>& solutionWords, const std::vector<std::string>& guessWords);
+
+    ScoredWord Score(const std::string &solutionWord, const std::string &guessWord) const;
+private:
+    std::unordered_map<std::string, ScoredWord> _map;
+};

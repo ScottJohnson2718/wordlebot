@@ -136,7 +136,7 @@ size_t ScoreGroupCount(const std::string& guessWord,
     for (auto const& possibleSolution : solutionWords)
     {
         ScoredWord s = Score(possibleSolution, guessWord);
-        std::string str = s.ToString(guessWord);
+        //std::string str = s.ToString(guessWord);
         groups[s]++;
     }
     for (const auto &group : groups)
@@ -160,7 +160,7 @@ std::vector<std::string> ScoreGroup(
     for (auto const& possibleSolution : solutionWords)
     {
         ScoredWord s = Score(possibleSolution, guessWord);
-        std::string str = s.ToString(guessWord);      // useful for debugging
+        //std::string str = s.ToString(guessWord);      // useful for debugging
         if (score == s)
         {
             remaining.push_back(possibleSolution);
@@ -180,4 +180,25 @@ std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,
         wordScores.insert(s);
     }
     return wordScores;
+}
+
+WordScorer::WordScorer(const std::vector<std::string>& solutionWords, const std::vector<std::string>& guessWords)
+{
+    for (const auto &solutionWord : solutionWords)
+    {
+        for (const auto &guessWord : guessWords)
+        {
+            std::string joined = solutionWord + guessWord;
+            _map[joined] = Score(solutionWord, guessWord);
+        }
+    }
+}
+
+ScoredWord WordScorer::Score(const std::string &solutionWord, const std::string &guessWord) const
+{
+    std::string joined = solutionWord + guessWord;
+    auto iter = _map.find(joined);
+    if (iter != _map.end())
+        return iter->second;
+    return ScoredWord();
 }
