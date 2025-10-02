@@ -32,38 +32,56 @@ bool Contains(const std::string &str, const char ch, int &foundIndex)
     return false;
 }
 
-ScoredWord Score(const std::string& solution, const std::string& guess)
+ScoredWord Score(const char* pSolution, const char* pGuess, int n = 5)
 {
-    std::string mutableSolution(solution);
-    std::string mutableGuess(guess);
-    const char *pSolution = mutableSolution.c_str();
-    const char *pGuess = guess.c_str();
     ScoredWord score;
-    for (int i = 0; i < solution.size(); ++i)
+
+    // Track which positions have been processed using bit flags
+    unsigned int solutionUsed = 0;
+    unsigned int guessProcessed = 0;
+
+    // First pass: mark exact matches (green)
+    for (int i = 0; i < n; ++i)
     {
         if (pGuess[i] == pSolution[i])
         {
             score.Set(i, Correct);
-            mutableSolution[i] = '.';
-            mutableGuess[i] = '.';
+            solutionUsed |= (1u << i);
+            guessProcessed |= (1u << i);
         }
     }
-    for (int i = 0; i < solution.size(); ++i)
+
+    // Second pass: check for letters in wrong positions (yellow/gray)
+    for (int i = 0; i < n; ++i)
     {
-        if (mutableGuess[i] == '.')
+        if (guessProcessed & (1u << i))
             continue;
-        int foundIndex;
-        if (Contains(mutableSolution, guess[i], foundIndex))
+
+        // Look for this guess letter in unused solution positions
+        bool found = false;
+        for (int j = 0; j < n; ++j)
         {
-            score.Set(i, CorrectNotHere);
-            mutableSolution[foundIndex] = '.';
+            if (!(solutionUsed & (1u << j)) && (pGuess[i] == pSolution[j]))
+            {
+                score.Set(i, CorrectNotHere);
+                solutionUsed |= (1u << j);
+                found = true;
+                break;
+            }
         }
-        else
+
+        if (!found)
         {
             score.Set(i, NotPresent);
         }
     }
+
     return score;
+}
+
+ScoredWord Score(const std::string& solution, const std::string& guess)
+{
+    return Score(solution.c_str(), guess.c_str());
 }
 
 std::string ScoredWord::ToString(const std::string &guess) const
@@ -111,19 +129,31 @@ std::ostream& printColored(std::ostream &str, const std::string &guess, const Sc
 
         switch (cs)
         {
-            case NotPresent:
-                str << "\033[37;100m" << ch;
-                break;
-            case Correct :
-                str << "\033[37;42m" << ch;
-                break;
-            case CorrectNotHere :
-                str << "\033[37;42m" << ch;
-                break;
+        case NotPresent:
+            // White text on gray background
+            str << "\033[37;100m" << ch;
+            break;
+        case Correct:
+            // White text on green background
+            str << "\033[37;42m" << ch;
+            break;
+        case CorrectNotHere:
+            // White text on yellow background
+            str << "\033[37;43m" << ch;
+            break;
         }
-        str << "\033[37;42m";
+
+        // Reset formatting
+        str << "\033[0m";
     }
     return str;
+}
+
+std::string ScoredWord::ToStringColored(const std::string& guess) const
+{
+    std::stringstream str;
+    printColored(str, guess, *this);
+    return str.str();
 }
 
 size_t ScoreGroupCount(const std::string& guessWord,

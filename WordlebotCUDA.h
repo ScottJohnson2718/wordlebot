@@ -25,6 +25,17 @@ void launch_compute_entropies(
     float* d_entropies
 );
 
+// Filter solutions based on observed pattern (returns number of remaining solutions)
+int launch_filter_solutions(
+    const uint16_t* d_pattern_table,
+    const int* d_input_indices,
+    int* d_output_indices,
+    int num_input,
+    int num_guesses,
+    int guess_idx,
+    uint16_t target_pattern
+);
+
 // Host-side pattern computation
 uint16_t compute_pattern_host(const char* solution, const char* guess);
 

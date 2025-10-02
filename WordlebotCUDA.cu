@@ -10,38 +10,50 @@
 #include <cuda_runtime.h>
 
 // Branchless pattern computation (device and host compatible)
-__device__ __host__ uint16_t compute_pattern(const char* solution, const char* guess) {
-    // Count letters in solution
-    int sol_counts[26];
-    for (int i = 0; i < 26; i++) sol_counts[i] = 0;
+__device__ __host__ uint16_t compute_pattern(const char* pSolution, const char* pGuess)
+{
+    uint16_t score = 0;
 
-    for (int i = 0; i < 5; i++) {
-        sol_counts[solution[i] - 'a']++;
+    // Track which positions have been processed using bit flags
+    unsigned int solutionUsed = 0;
+    unsigned int guessProcessed = 0;
+
+    // First pass: mark exact matches (green)
+    for (int i = 0; i < 5; ++i)
+    {
+        if (pGuess[i] == pSolution[i])
+        {
+            score |= Correct << (i << 1);
+            solutionUsed |= (1u << i);
+            guessProcessed |= (1u << i);
+        }
     }
 
-    uint16_t pattern = 0;
-    int temp_counts[26];
-    for (int i = 0; i < 26; i++) temp_counts[i] = sol_counts[i];
+    // Second pass: check for letters in wrong positions (yellow/gray)
+    for (int i = 0; i < 5; ++i)
+    {
+        if (guessProcessed & (1u << i))
+            continue;
 
-    // First pass: mark greens and reduce counts
-    for (int i = 0; i < 5; i++) {
-        int is_green = (guess[i] == solution[i]);
-        pattern |= (NotPresent * is_green) << (i * 2);
-        temp_counts[guess[i] - 'a'] -= is_green;
+        // Look for this guess letter in unused solution positions
+        bool found = false;
+        for (int j = 0; j < 5; ++j)
+        {
+            if (!(solutionUsed & (1u << j)) && (pGuess[i] == pSolution[j]))
+            {
+                score |= CorrectNotHere << (i << 1);
+                solutionUsed |= (1u << j);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            score |= NotPresent << (i << 1);
+        }
     }
-
-    // Second pass: mark yellows
-    for (int i = 0; i < 5; i++) {
-        int is_green = (guess[i] == solution[i]);
-        int letter_idx = guess[i] - 'a';
-        int has_remaining = (temp_counts[letter_idx] > 0);
-        int is_yellow = (!is_green) & has_remaining;
-
-        pattern |= (CorrectNotHere * is_yellow) << (i * 2);
-        temp_counts[letter_idx] -= is_yellow;
-    }
-
-    return pattern;
+    return score;
 }
 
 // CUDA kernel to build the precomputed pattern table
@@ -144,6 +156,65 @@ void launch_build_pattern_table(
         );
 
     cudaDeviceSynchronize();
+}
+
+// CUDA kernel to filter remaining solutions based on observed pattern
+__global__ void filter_solutions_kernel(
+    const uint16_t* pattern_table,
+    const int* input_indices,
+    int* output_indices,
+    int* output_count,
+    int num_input,
+    int num_guesses,
+    int guess_idx,
+    uint16_t target_pattern
+) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < num_input) {
+        int sol_idx = input_indices[idx];
+        uint16_t pattern = pattern_table[sol_idx * num_guesses + guess_idx];
+
+        // If this solution produces the target pattern, add it to output
+        if (pattern == target_pattern) {
+            int pos = atomicAdd(output_count, 1);
+            output_indices[pos] = sol_idx;
+        }
+    }
+}
+
+// Host wrapper for filtering solutions
+int launch_filter_solutions(
+    const uint16_t* d_pattern_table,
+    const int* d_input_indices,
+    int* d_output_indices,
+    int num_input,
+    int num_guesses,
+    int guess_idx,
+    uint16_t target_pattern
+) {
+    // Allocate counter on device
+    int* d_output_count;
+    cudaMalloc(&d_output_count, sizeof(int));
+    cudaMemset(d_output_count, 0, sizeof(int));
+
+    // Launch kernel
+    int threads = 256;
+    int blocks = (num_input + threads - 1) / threads;
+
+    filter_solutions_kernel << <blocks, threads >> > (
+        d_pattern_table, d_input_indices, d_output_indices, d_output_count,
+        num_input, num_guesses, guess_idx, target_pattern
+        );
+
+    cudaDeviceSynchronize();
+
+    // Get the count
+    int output_count;
+    cudaMemcpy(&output_count, d_output_count, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaFree(d_output_count);
+
+    return output_count;
 }
 
 void launch_compute_entropies(

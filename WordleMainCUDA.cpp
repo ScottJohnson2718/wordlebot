@@ -1,20 +1,35 @@
 
 #include "WordleSolverCUDA.h"
+#include "WordlebotCUDA.h"
 
 #include "Wordle.h"
+#include "ScoredWord.h"
 
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <string>
 
-bool Solve(WordleSolverCUDA &solver, const char* answer, const char* initialGuess, const  std::vector<std::string>&guessWords, std::vector<std::string>& bestGuesses, bool verbose = false)
+int find_word_index(const std::vector<std::string>& guesses, const std::string& target) {
+    for (int i = 0; i < guesses.size(); i++) {
+        if (guesses[i] == target) {
+            return i;
+        }
+    }
+    return -1;  // Not found
+}
+
+bool Solve(WordleSolverCUDA &solver, const char* answer, int initialGuessIndex, const  std::vector<std::string>&guessWords, std::vector<std::string>& bestGuesses, bool verbose = false, bool showGuesses = false)
 {
     int turn = 1;
     solver.reset();
 
     // opening guess
-    std::string guess(initialGuess);
-    solver.update_remaining(guess, answer);
+    std::string guess = guessWords[initialGuessIndex];
+    int best_idx = initialGuessIndex;
+   
+    uint16_t observed_pattern = compute_pattern_host(answer, guess.c_str());
+    solver.update_remaining(best_idx, observed_pattern);
     if (verbose)
     {
         std::cout << "Initial guess: " << guess << std::endl;
@@ -22,12 +37,19 @@ bool Solve(WordleSolverCUDA &solver, const char* answer, const char* initialGues
     }
 
     bool solved = false;
+    
 
     while (turn <= 6)
     {
         if (verbose)
             std::cout << "Turn " << turn << ": Guessing '" << guess << "'\n";
         bestGuesses.emplace_back(guess);
+        
+        if (showGuesses)
+        {
+            ScoredWord scoredWord(observed_pattern);
+            std::cout << scoredWord.ToStringColored(guess) << " ";
+        }
 
         // Check if we guessed correctly
         if (guess == answer) {
@@ -40,8 +62,6 @@ bool Solve(WordleSolverCUDA &solver, const char* answer, const char* initialGues
             break;
         }
 
-        // Update remaining solutions based on the guess
-        solver.update_remaining(guess, answer);
         if (verbose)
             std::cout << "Remaining solutions: " << solver.get_num_remaining() << "\n";
 
@@ -62,16 +82,29 @@ bool Solve(WordleSolverCUDA &solver, const char* answer, const char* initialGues
                 std::cout << "Success! Found the answer '" << answer
                     << "' in " << turn << " turns!\n";
             }
+            if (showGuesses)
+            {
+                ScoredWord scoredWord;
+                for (int j = 0; j < 5; ++j)
+                    scoredWord.Set(j, Correct);
+                std::cout << scoredWord.ToStringColored(answer) << std::endl;
+            }
             bestGuesses.emplace_back(answer);
             solved = true;
             break;
         }
 
         // Get next best guess
-        int best_idx = solver.get_best_guess();
-      
+        best_idx = solver.get_best_guess();
         guess = guessWords[best_idx];
-        float best_entropy = solver.get_entropy(best_idx);
+
+        // Update remaining solutions based on the guess
+        observed_pattern = compute_pattern_host(answer, guess.c_str());
+
+        solver.update_remaining(best_idx, observed_pattern);
+      
+        
+        //float best_entropy = solver.get_entropy(best_idx);
 
         turn++;
     }
@@ -89,8 +122,6 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> solutions;
     std::vector<std::string> guessWords;
 
-    std::string initialGuess("crane");
-
     LoadDictionaries(true, 5, "d:/work/git_repos/wordlebot", solutions, guessWords);
 
     if (solutions.empty() || guessWords.empty()) {
@@ -102,6 +133,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Solutions: " << solutions.size() << "\n";
    // guessWords = solutions;
     std::cout << "Guesses: " << guessWords.size() << "\n\n";
+    
+    std::string initialGuess("crane");
+    if (argc >= 1)
+        initialGuess = argv[1];
+    int initialGuessIndex = find_word_index(guessWords, initialGuess);
 
     // Initialize solver
     auto start = std::chrono::high_resolution_clock::now();
@@ -116,7 +152,7 @@ int main(int argc, char* argv[]) {
     for (const auto solution : solutions)
     {
         std::vector<std::string> bestGuesses;
-        if (Solve(solver, solution.c_str(), initialGuess.c_str(), guessWords, bestGuesses))
+        if (Solve(solver, solution.c_str(), initialGuessIndex, guessWords, bestGuesses, false, true))
         {
             /*for (auto const& best : bestGuesses)
             {
@@ -132,10 +168,10 @@ int main(int argc, char* argv[]) {
 
     }
     end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-    std::cout << "Time to solve all words in solution dictionary (sec): " << duration << "\n\n";
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Time to solve all words in solution dictionary (msec): " << duration  << "\n\n";
 
-    std::cout << "Average time to solve a single word (sec): " << (double) duration / (double) totalGuesses << std::endl;
+    std::cout << "Average time to solve a single word (msec): " << (double) duration / (double) totalGuesses * 1000.0 << std::endl;
     std::cout << "Average number of guesses with opening word of : " << initialGuess << " : " << (double)totalGuesses / (double)solutions.size() << std::endl;
     return 0;
 }

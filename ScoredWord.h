@@ -18,6 +18,11 @@ struct ScoredWord
 {
     ScoredWord() = default;
 
+    ScoredWord(uint16_t raw)
+        : v(raw)
+    {
+    }
+
     // This is more of a debug constructor for hard coded test cases
     ScoredWord(const std::string& scoreStr)
     {
@@ -69,14 +74,14 @@ struct ScoredWord
     }
 
 
-    uint32_t v = 0;
+    uint16_t v = 0;
 };
 
 struct ScoredWordHash
 {
     std::size_t operator()(const ScoredWord& s) const
     {
-        return std::hash<uint32_t>()(s.v);
+        return std::hash<uint16_t>()(s.v);
     }
 };
 
