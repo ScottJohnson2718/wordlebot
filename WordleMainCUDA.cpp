@@ -58,6 +58,10 @@ bool Solve(WordleSolverCUDA &solver, const char* answer, int initialGuessIndex, 
                 std::cout << "Success! Found the answer '" << answer
                     << "' in " << turn << " turns!\n";
             }
+            if (showGuesses)
+            {
+                std::cout << std::endl;
+            }
             solved = true;
             break;
         }
@@ -114,9 +118,7 @@ bool Solve(WordleSolverCUDA &solver, const char* answer, int initialGuessIndex, 
 
 int main(int argc, char* argv[]) {
 
-    std::cout << "Wordle CUDA Solver\n";
-    std::cout << "==================\n\n";
-
+  
     // Load word lists
     // You can replace these with your actual file paths
     std::vector<std::string> solutions;
@@ -130,14 +132,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cout << "Solutions: " << solutions.size() << "\n";
+    //std::cout << "Solutions: " << solutions.size() << "\n";
    // guessWords = solutions;
-    std::cout << "Guesses: " << guessWords.size() << "\n\n";
+    //std::cout << "Guesses: " << guessWords.size() << "\n\n";
     
     std::string initialGuess("crane");
-    if (argc >= 1)
+    if (argc > 1)
         initialGuess = argv[1];
     int initialGuessIndex = find_word_index(guessWords, initialGuess);
+    if (initialGuessIndex < 0)
+    {
+        std::cerr << "The initial guess '" << initialGuess << "' needs to be in the dictionary of guessing words" << std::endl;
+        return 1;
+    }
 
     // Initialize solver
     auto start = std::chrono::high_resolution_clock::now();
@@ -145,13 +152,18 @@ int main(int argc, char* argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto init_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::cout << "Initialization time: " << init_time << " ms\n\n";
+    //std::cout << "Initialization time: " << init_time << " ms\n\n";
 
     start = std::chrono::high_resolution_clock::now();
     size_t totalGuesses = 0;
+    //std::string solution("solve");
     for (const auto solution : solutions)
     {
         std::vector<std::string> bestGuesses;
+        if (solution == "solve")
+        {
+            int foo = 4;
+        }
         if (Solve(solver, solution.c_str(), initialGuessIndex, guessWords, bestGuesses, false, true))
         {
             /*for (auto const& best : bestGuesses)
