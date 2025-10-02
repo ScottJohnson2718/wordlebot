@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.23)
-project(wordle)
+project(wordle LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
+
+option(WITH_CUDA "WITH_CUDA" ON)
 
 # Fetch Google Test according to https://google.github.io/googletest/quickstart-cmake.html
 include(FetchContent)
@@ -45,11 +47,30 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(-D_CRT_SECURE_NO_WARNINGS)
-    add_compile_options(/wd4267) # conversion from size_t
-    add_compile_options(/wd4244) # conversion from double to float
-    add_compile_options(/wd4305) # truncation from double to float
+    #add_compile_options(/wd4267) # conversion from size_t
+    #add_compile_options(/wd4244) # conversion from double to float
+    #add_compile_options(/wd4305) # truncation from double to float
 
-    add_compile_options("/MP")   # multiprocessor build
+    #add_compile_options("/MP")   # multiprocessor build
+endif()
+
+if (WITH_CUDA)
+
+    add_executable(wordlebotCUDA 
+        WordlebotCUDA.cu  WordlebotCUDA.h 
+        WordleSolverCUDA.cpp WordleSolverCUDA.h
+        WordleMainCUDA.cpp)
+
+    # Set CUDA separable compilation
+    set_target_properties(wordlebotCUDA PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+     # Explicitly mark the .cu file
+    set_source_files_properties(WordlebotCUDA.cu PROPERTIES LANGUAGE CUDA)
+
+    target_link_libraries(wordlebotCUDA PUBLIC WordleLib ${CUDA_LIBRARIES})
+
 endif()
 
 
