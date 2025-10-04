@@ -112,9 +112,9 @@ int Bot::SolvePuzzle( Board& board, const std::string &hiddenSolution, const std
             if (verbose_)
             {
                 std::cout << hiddenSolution << " -> ";
-                for (auto v: board.guesses)
+                for (size_t i = 0; i < board.guesses.size(); ++i)
                 {
-                    std::cout << v << " ";
+                    printColored(std::cout, board.guesses[i], board.scores[i]) << " ";
                 }
                 std::cout << std::endl;
             }

@@ -97,6 +97,7 @@ ScoredWord Score(const std::string& solution, const std::string& guess);
 std::string ScoreString(const std::string &solution, const std::string &guess);
 
 std::ostream& print(std::ostream &str, const std::string &guess, const ScoredWord &scored);
+std::ostream& printColored(std::ostream& str, const std::string& guess, const ScoredWord& scored);
 
 // Return the number of score groups the given guess breaks the solutions into.
 size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords, size_t &largestGroup);

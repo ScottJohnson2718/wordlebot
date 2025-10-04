@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
             std::string guess = argv[tokenIndex+2];
             auto scoredWord = Score(solution, guess);
             std::cout << "Scoring guess " << guess << " against solution " << solution << std::endl;
-            print(std::cout, guess, scoredWord);
+            printColored(std::cout, guess, scoredWord);
             std::cout << std::endl;
             return 0;
         }
