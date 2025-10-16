@@ -20,18 +20,13 @@ struct Bot
     Bot(const std::vector<std::string>& guessingWords, const std::vector<std::string>& solutionWords,
         Strategy &strategy, bool verbose = false);
 
-    // Returns the number of guesses it took to solve the puzzle
-    int SolvePuzzle( std::string const &hiddenSolution, const std::string &openingGuess);
-
     // Given the solution, this find out how many guesses it would take this bot (with its strategy) would
     // take to solve the puzzle.
     // The solution words have yet to be pruned for the opening guess
     // Returns the number of guesses it took to solve the puzzle
-    int SolvePuzzle(Board& board, std::string const& hiddenSolution, const std::string& openingGuess);
-
-    // No opening guess is given. Bot is on its own. remainingSolutions must be already pruned to match the state
-    // of the board.
-    int SolvePuzzle( Board& board, const std::string &hiddenSolution, const std::vector<std::string>& remainingSolutions);
+ 
+    int SolvePuzzle( const std::string& hiddenSolution, const std::string& openingGuess = "trace");
+    int SolvePuzzle( Board& board, const std::string &hiddenSolution, const std::string& openingGuess = "trace");
 
     struct SearchResult
     {

@@ -23,7 +23,7 @@ struct ScoredWord
     {
     }
 
-    // This is more of a debug constructor for hard coded test cases
+    // Accepts score strings such as "..Ha." where dots mean gray, capitals are yellow, and lower case are green
     ScoredWord(const std::string& scoreStr)
     {
         for (int i = 0; i < scoreStr.size(); ++i)
@@ -103,6 +103,9 @@ std::ostream& printColored(std::ostream& str, const std::string& guess, const Sc
 size_t ScoreGroupCount(const std::string& guessWord, const std::vector<std::string>& solutionWords, size_t &largestGroup);
 // Return the solution words that all have the same score as the target score
 std::vector<std::string> ScoreGroup(const std::string& guessWord, const ScoredWord& target,
+    const std::vector < std::string>& solutionWords);
+
+std::vector<std::string> PruneSearchSpace(const std::string& guessWord, const ScoredWord& target,
     const std::vector < std::string>& solutionWords);
 
 std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,

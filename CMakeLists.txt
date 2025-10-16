@@ -18,14 +18,11 @@ FetchContent_MakeAvailable(googletest)
 
 # Create the library across the applications
 add_library(WordleLib STATIC
-        WordQuery.cpp WordQuery.h
         ScoredWord.cpp ScoredWord.h
         Wordle.h Wordle.cpp
         Board.cpp Board.h
-        Entropy.h
         Strategy.cpp Strategy.h
-        WordleBot.cpp WordleBot.h
-        Entropy.cpp LookaheadStrategy.cpp LookaheadStrategy.h)
+        WordleBot.cpp WordleBot.h )
 
 add_executable(wordlebot main.cpp)
 target_link_libraries(wordlebot PUBLIC WordleLib )

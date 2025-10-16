@@ -7,7 +7,6 @@
 //#include "ScoredWord.h"
 #include "Board.h"
 #include "Strategy.h"
-#include "LookaheadStrategy.h"
 #include "WordleBot.h"
 
 int main(int argc, char *argv[])
@@ -23,6 +22,7 @@ int main(int argc, char *argv[])
     bool newYorkTimes = false;
 
     Board board;
+    std::string initialGuess("trace");
     std::filesystem::path dictPath(".");
 
     for (int tokenIndex = 1; tokenIndex < argc; )
@@ -47,6 +47,12 @@ int main(int argc, char *argv[])
             tokenIndex += 2;
             continue;
         }
+        if (strcmp(argv[tokenIndex], "--init") == 0)
+        {
+            initialGuess = argv[tokenIndex + 1];
+            tokenIndex += 2;
+            continue;
+        }
         if (strcmp(argv[tokenIndex], "--score") == 0)
         {
             std::string solution = argv[tokenIndex+1];
@@ -63,10 +69,11 @@ int main(int argc, char *argv[])
             std::vector<std::string> guessingWords;
             std::vector<std::string> solutionWords;
             LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
+
             ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
             //LookaheadStrategy lookahead( scoreGrouping, guessingWords, 20);
             Bot bot(guessingWords, solutionWords, scoreGrouping, true);
-            bot.SolvePuzzle(solution, "slate");
+            bot.SolvePuzzle(solution, initialGuess);
             std::cout << std::endl;
             return 0;
         }
@@ -127,9 +134,8 @@ int main(int argc, char *argv[])
     ScoreGroupingStrategy strategy(guessingWords, 10);
     //LookaheadStrategy strategy(scoreGroupingStrategy,guessingWords, 10);
 
-    WordQuery query = board.GenerateQuery();
-
-    std::vector<std::string>  remaining = PruneSearchSpace(query, solutionWords);
+ 
+    std::vector<std::string>  remaining = board.PruneSearchSpace(solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
     for (int idx = 0; idx < remaining.size() ; ++idx)
     {

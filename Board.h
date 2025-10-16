@@ -3,7 +3,6 @@
 #pragma once
 
 #include "Wordle.h"
-#include "WordQuery.h"
 #include "ScoredWord.h"
 
 #include <vector>
@@ -25,9 +24,7 @@ struct Board
 
     void Pop();
 
-    // Go through all the user guesses and how they were scored and
-    // create a query that can be used to see which words meet the conditions.
-    WordQuery GenerateQuery() const;
+    std::vector<std::string> Board::PruneSearchSpace(const std::vector<std::string>& solutionWords) const;
 
     std::vector< std::string> guesses;
     std::vector< ScoredWord > scores;

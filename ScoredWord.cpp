@@ -199,6 +199,14 @@ std::vector<std::string> ScoreGroup(
     return remaining;
 }
 
+std::vector<std::string> PruneSearchSpace(
+    const std::string& guessWord,
+    const ScoredWord& score,
+    const std::vector < std::string>& solutionWords)
+{
+    return ScoreGroup(guessWord, score, solutionWords);
+}
+
 std::set<ScoredWord> ScoresByGuess(const std::string& guessWord,
                                       const std::vector < std::string>& solutionWords )
 {

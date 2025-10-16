@@ -2,8 +2,6 @@
 
 #include "Wordle.h"
 
-#include "WordQuery.h"
-
 #include <iostream>
 #include <fstream>
 
@@ -26,22 +24,6 @@ bool LoadDictionary( const std::filesystem::path &filename, std::vector<std::str
         return false;
     }
     return true;
-}
-
-std::vector<std::string>  PruneSearchSpace(const WordQuery& query, const std::vector<std::string>& words)
-{
-    std::vector<std::string> remaining;
-
-    // Apply the query to each word
-    for (size_t i = 0; i < words.size(); ++i)
-    {
-        if (query.Satisfies(words[i]))
-        {
-            remaining.push_back(words[i]);
-        }
-    }
-
-    return remaining;
 }
 
 uint32_t ComputeMask( const std::string &word)

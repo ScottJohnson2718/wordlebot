@@ -3,12 +3,10 @@
 
 
 #include "Wordle.h"
-#include "WordQuery.h"
 #include "Board.h"
 #include "Strategy.h"
 #include "WordleBot.h"
 #include "ScoredWord.h"
-#include "LookaheadStrategy.h"
 
 #include <algorithm>
 #ifndef __APPLE__
@@ -32,7 +30,7 @@ TEST(Wordle, GuessOnFirstTry)
     bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
 
-    BlendedStrategy strategy(guessingWords, 10);
+    ScoreGroupingStrategy strategy(guessingWords, 10);
     Bot bot(guessingWords, solutionWords, strategy, true);
 
     int guessCount = bot.SolvePuzzle("joker", "joker");
@@ -49,17 +47,7 @@ TEST(Wordle, Price)
     ASSERT_TRUE(loaded);
 
     {
-        BlendedStrategy strategy(guessingWords, 10);
-        Bot bot(guessingWords, solutionWords, strategy, true);
-
-        int guessCount = bot.SolvePuzzle("price", "stale");
-        EXPECT_GT(guessCount, 0);
-        EXPECT_LE(guessCount, 4);
-    }
-
-    {
-        EntropyStrategy entropy(guessingWords, 10);
-        LookaheadStrategy strategy(entropy, guessingWords, 10);
+        ScoreGroupingStrategy strategy(guessingWords, 10);
         Bot bot(guessingWords, solutionWords, strategy, true);
 
         int guessCount = bot.SolvePuzzle("price", "stale");
@@ -75,27 +63,6 @@ TEST(Wordle, Oozed)
 
     bool loaded = LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
     ASSERT_TRUE(loaded);
-
-    {
-        std::cout << "Blended" << std::endl;
-        BlendedStrategy strategy(guessingWords, 10);
-        Bot bot(guessingWords, solutionWords, strategy, true);
-
-        int guessCount = bot.SolvePuzzle("oozed", "stale");
-        EXPECT_GT(guessCount, 0);
-        EXPECT_LE(guessCount, 6);
-    }
-
-    {
-        std::cout << "Lookahead with Entropy as the sub" << std::endl;
-        EntropyStrategy entropy(guessingWords, 10);
-        LookaheadStrategy strategy(entropy, guessingWords, 10);
-        Bot bot(guessingWords, solutionWords, strategy, true);
-
-        int guessCount = bot.SolvePuzzle("oozed", "stale");
-        EXPECT_GT(guessCount, 0);
-        EXPECT_LE(guessCount, 6);
-    }
 
     {
         std::cout << "Score Grouping" << std::endl;
@@ -156,49 +123,6 @@ TEST(Scoring, DoubleLetterScoring)
     //auto r4 = ScoreString("lully", "lilly");
 }
 
-TEST(WordQuery, First)
-{
-    Board board(5);
-    board.PushScoredGuess("slate", ScoredWord(".L..."));
-    auto query = board.GenerateQuery();
-
-    // Query should pass words that have an L and no 's', 'a', 't', or 'e'.
-    EXPECT_TRUE(query.Satisfies("build"));   // passes. Has an 'l' and no bad chars
-    EXPECT_FALSE(query.Satisfies("slots"));  // has an 's' so no
-    EXPECT_FALSE(query.Satisfies("apple"));  // has an 'a' so no
-
-    board.PushScoredGuess("grody", ScoredWord("...D."));
-    EXPECT_TRUE(query.Satisfies("build"));
-
-    board.PushScoredGuess("caput", ScoredWord("...U."));
-    EXPECT_TRUE(query.Satisfies("build"));
-    EXPECT_FALSE(query.Satisfies("group")); // no 'g's allowed or r's
-}
-
-TEST(WordQuery, DoubleLetter)
-{
-    Board board(5);
-    board.PushScoredGuess("babes", "BAbe.");
-    auto query = board.GenerateQuery();
-
-    // Query should pass words that have an L and no 's', 'a', 't', or 'e'.
-    EXPECT_TRUE(query.Satisfies("abbey"));   // passes. This is actually the solutions
-    EXPECT_FALSE(query.Satisfies("slots"));  // has an 's' so no
-    EXPECT_FALSE(query.Satisfies("apple"));   // fails. No 'b's let alone is the right place
-    EXPECT_FALSE(query.Satisfies("cable"));   // fails. No 'b' in correct place.
-}
-
-TEST(WordQuery, DoubleLetter2)
-{
-    // slate "SLAt." shuns "S...s"
-    Board board(5);
-    board.PushScoredGuess("shuns", ScoredWord("S...s"));    // solution was "lasts"
-    auto query = board.GenerateQuery();
-
-    EXPECT_TRUE(query.Satisfies("lasts"));
-    EXPECT_FALSE(query.Satisfies("malts")); // minimum of two 's's.
-}
-
 class LionStudiosFiveLetter : public testing::Test
 {
 protected:
@@ -208,30 +132,19 @@ protected:
         LoadDictionaries(false, 5, dictPath, solutionWords, guessingWords);
 
         scoreGrouping = new ScoreGroupingStrategy(guessingWords, 10);
-        search = new SearchStrategy(guessingWords, 10);
-        entropy = new EntropyStrategy(guessingWords, 10);
-        lookahead = new LookaheadStrategy( *scoreGrouping, guessingWords, 10);
-
+  
         strategies.push_back(scoreGrouping);
-        strategies.push_back(search);
-        strategies.push_back(entropy);
     }
 
     void TearDown() override
     {
         delete scoreGrouping;
-        delete search;
-        delete entropy;
-        delete lookahead;
     }
 
     std::vector<std::string> solutionWords;
     std::vector<std::string> guessingWords;
 
     ScoreGroupingStrategy* scoreGrouping;
-    SearchStrategy* search;
-    EntropyStrategy* entropy;
-    LookaheadStrategy* lookahead;
 
     std::vector< Strategy*> strategies;
 };
@@ -248,7 +161,7 @@ protected:
     std::vector<std::string> guessingWords;
 };
 
-TEST(WordQuery, TempsBug)
+TEST(Wordle, TempsBug)
 {
     std::string actualSolution = "temps";
     std::string guess = "feels";
@@ -270,24 +183,9 @@ TEST(WordQuery, TempsBug)
     // When using score grouping, it is not necessary to use a WordQuery and prune the solution words.
     // That is unless the score groups were only counted and not enumerated.
     board.PushScoredGuess("feels", sw);
-    auto query = board.GenerateQuery();
-    remaining = PruneSearchSpace(query, solutions);
-
-    EXPECT_FALSE(query.Satisfies("teems"));  // position 2 can't be an 'e'
-    EXPECT_FALSE(query.Satisfies("temes"));  // must have exactly one 'e'
-    EXPECT_TRUE(query.Satisfies("temps"));   // passes 
+    remaining = board.PruneSearchSpace(solutions);
 
     EXPECT_EQ(remaining.size(), 1);
-}
-
-TEST(Score, Local)
-{
-    auto scoredWord = Score("vocal", "local");
-    std::string str = scoredWord.ToString("local");
-    Board board(5);
-    board.PushScoredGuess("local", scoredWord);
-    auto query = board.GenerateQuery();
-    EXPECT_FALSE(query.Satisfies("local"));
 }
 
 // At one point, this interactive session was returning the guess "eager" 
@@ -299,9 +197,7 @@ TEST_F(LionStudiosFiveLetter, Temps)
     board.PushScoredGuess("slate", ScoredWord("S..TE"));
     board.PushScoredGuess("meres", ScoredWord("Me..s"));
 
-    WordQuery query = board.GenerateQuery();
-
-    std::vector<std::string>  remaining = PruneSearchSpace(query, solutionWords);
+    std::vector<std::string>  remaining = board.PruneSearchSpace(solutionWords);
     std::cout << "Remaining word count : " << remaining.size() << std::endl;
     for (int idx = 0; idx < remaining.size(); ++idx)
     {
@@ -322,9 +218,7 @@ TEST_F(LionStudiosFiveLetter, Temps)
 
     auto bestGuess = scoreGrouping->BestGuess(board, remaining);
     
-
-    query = board.GenerateQuery();
-    remaining = PruneSearchSpace(query, remaining);
+    remaining = board.PruneSearchSpace(remaining);
     int foo = 4;
 }
 
@@ -361,36 +255,6 @@ TEST_F(LionStudiosFiveLetter, Votes)
     EXPECT_LE(guessCount, 6);
 }
 
-TEST_F(LionStudiosFiveLetter, Votes_Lookahead)
-{
-    Bot bot(guessingWords, solutionWords, *lookahead, true);
-    int guessCount = bot.SolvePuzzle("votes", "slate");
-    EXPECT_NE(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-}
-
-TEST_F(NewYorkTimesFiveLetter, SinglePuzzlesEntropyStrategy)
-{
-    EntropyStrategy strategy(guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, strategy, true);
-
-    int guessCount = bot.SolvePuzzle("agony", "slate");
-    EXPECT_NE(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-
-    guessCount = bot.SolvePuzzle("votes", "stale");
-    EXPECT_NE(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-
-    guessCount = bot.SolvePuzzle("abode", "stale");
-    EXPECT_NE(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-
-    guessCount = bot.SolvePuzzle("joker", "stale");
-    EXPECT_NE(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-}
-
 TEST_F(NewYorkTimesFiveLetter, SinglePuzzlesScoreGroupingStrategy)
 {
     ScoreGroupingStrategy strategy(guessingWords, 10);
@@ -411,36 +275,6 @@ TEST_F(NewYorkTimesFiveLetter, SinglePuzzlesScoreGroupingStrategy)
     guessCount = bot.SolvePuzzle("joker", "stale");
     EXPECT_NE(guessCount, 0);
     EXPECT_LE(guessCount, 6);
-}
-
-TEST(Wordle, Entropy)
-{
-    std::vector<std::string> solutionWords;
-
-    solutionWords.push_back("bikes");
-    solutionWords.push_back("hikes");
-    solutionWords.push_back("likes");
-
-    WordQuery query(5);
-    query.SetMustContain('i');
-    query.SetMustContain('k');
-    query.SetMustContain('e');
-    query.SetMustContain('s');
-
-    auto freqs = charFrequency(solutionWords, query);
-
-    // The conclusion was that entropy alone does not make the correct choice.
-    // The best guess is "bahil" because it differentiates between the choices
-    // but it has less entropy than the others because the 'a' counts for zero.
-    float e0 = entropy("bahil", freqs);
-    float e1 = entropy("bikes", freqs);
-    float e2 = entropy("hikes", freqs);
-    std::cout << "Entropy for guess bahil: " << e0 << std::endl;
-    std::cout << "Entropy for guess bikes: " << e1 << std::endl;
-    std::cout << "Entropy for guess hikes: " << e2 << std::endl;
-
-    EXPECT_GT(e0, e1);
-    EXPECT_GT(e0, e2);
 }
 
 float TestWords(std::vector<std::string>& solutionWords, const std::vector < std::string>& guessingWords,
@@ -479,23 +313,11 @@ TEST(BatchSolve, Strategy)
     std::cout << "loaded " << solutionWords.size() << " words." << std::endl;
     std::cout << "loaded " << guessingWords.size() << " words." << std::endl;
 
-    BlendedStrategy blended(guessingWords, 10);
-    EntropyStrategy entropy(guessingWords, 10);
-    SearchStrategy search(guessingWords, 10);
-    //LookaheadStrategy lookahead(entropy, guessingWords, 10);
-    // LookaheadStrategy lookahead(search, guessingWords, 10);
-    ScoreGroupingStrategy groups(guessingWords, 10);
+       ScoreGroupingStrategy groups(guessingWords, 10);
 
     std::string opening = "slate";
-    float aveGuesses0 = TestWords(solutionWords, guessingWords, opening, entropy);
-    float aveGuesses1 = TestWords(solutionWords, guessingWords, opening, blended);
-    //float aveGuesses2 = TestWords(solutionWords, guessingWords, opening, search);
     float aveGuesses3 = TestWords(solutionWords, guessingWords, opening, groups);
 
-
-    std::cout << "Ave guesses for entropy strategy: " << aveGuesses0 << std::endl;
-    std::cout << "Ave guesses for blended strategy: " << aveGuesses1 << std::endl;
-    //std::cout << "Ave guesses for search strategy: " << aveGuesses2 << std::endl;
     std::cout << "Ave guesses for groups strategy: " << aveGuesses3 << std::endl;
 
     // With NYT dictionary and slate as the starting word...
@@ -549,9 +371,7 @@ TEST(BatchSolve, TestOpeningWords)
 
     //SearchStrategy search(guessingWords, 10);
     //LookaheadStrategy lookahead(search, guessingWords, 10);
-    EntropyStrategy entropy(guessingWords, 10);
-    LookaheadStrategy lookahead(entropy, guessingWords, 10);
-    ScoreGroupingStrategy grouping(guessingWords, 10);
+     ScoreGroupingStrategy grouping(guessingWords, 10);
 
     TestWords(solutionWords, guessingWords, "slate", grouping);
     //TestWords(solutionWords, guessingWords, "slate", lookahead);  
@@ -561,57 +381,6 @@ TEST(BatchSolve, TestOpeningWords)
     //TestWords(solutionWords, "daisy");  // 9822
 }
 
-TEST(Wordle, SimpleSearch)
-{
-    // Guessing words and solution words are the same for this test
-    std::vector<std::string> solutionWords;
-
-    solutionWords.push_back("bikes");
-    solutionWords.push_back("hikes");
-    solutionWords.push_back("likes");
-    solutionWords.push_back("slate");
-
-    EntropyStrategy entropy(solutionWords, 10);
-    Bot bot(solutionWords, solutionWords, entropy, true);
-    Bot::SearchResult result;
-    Board board(5);
-    bot.Search(board, solutionWords, result);
-
-}
-
-TEST(Wordle, SimpleLookahead)
-{
-    // Guessing words and solution words are the same for this test
-    std::vector<std::string> solutionWords;
-
-    solutionWords.push_back("bikes");
-    solutionWords.push_back("hikes");
-    solutionWords.push_back("likes");
-    solutionWords.push_back("slate");
-
-    EntropyStrategy subStrategy(solutionWords, 10);
-    LookaheadStrategy lookahead(subStrategy, solutionWords, 10);
-    Board board;
-
-    ScoredGuess bestGuess = lookahead.BestGuess(board, solutionWords);
-}
-
-TEST(Wordle, SolveUsingLookahead)
-{
-    std::vector<std::string> solutionWords;
-    std::vector<std::string> guessingWords;
-
-    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
-    ASSERT_TRUE(loaded);
-
-    EntropyStrategy subStrat(guessingWords, 200);
-    LookaheadStrategy lookaheadStrat(subStrat, guessingWords, 10);
-    Bot bot(guessingWords, solutionWords, lookaheadStrat, true);
-
-    int guessCount = bot.SolvePuzzle("ridge", "slate");
-    EXPECT_GT(guessCount, 0);
-    EXPECT_LE(guessCount, 6);
-}
 
 TEST(Wordle, SolveUsingScoreGrouping)
 {
@@ -627,6 +396,23 @@ TEST(Wordle, SolveUsingScoreGrouping)
     int guessCount = bot.SolvePuzzle("ridge", "slate");
     EXPECT_GT(guessCount, 0);
     EXPECT_LE(guessCount, 6);
+}
+
+TEST(Wordle, Hardy)
+{
+    std::vector<std::string> solutionWords;
+    std::vector<std::string> guessingWords;
+
+    bool loaded = LoadDictionaries(true, 5, dictPath, solutionWords, guessingWords);
+    ASSERT_TRUE(loaded);
+
+    Board board;
+    board.PushScoredGuess("slate", "..A..");
+    board.PushScoredGuess("caron", ".ar..");
+    board.PushScoredGuess("pharm", ".HAR.");
+
+    auto survived = board.PruneSearchSpace(solutionWords);
+    EXPECT_EQ(survived.size(), 1);
 }
 
 
