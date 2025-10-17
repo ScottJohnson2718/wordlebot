@@ -1,9 +1,12 @@
 
 
 #include "Wordle.h"
+#include "Strategy.h"
+#include "WordleBot.h"
 
 #include <iostream>
 #include <fstream>
+#include <execution>
 
 bool LoadDictionary( const std::filesystem::path &filename, std::vector<std::string> &words)
 {
@@ -111,3 +114,35 @@ void RemoveDuplicateGuesses( std::vector<ScoredGuess> &scoredGuesses)
 
 }
 
+float TestWords(std::vector<std::string>& solutionWords, const std::vector < std::string>& guessingWords,
+    const std::string& openingGuess, Strategy& strategy, bool verbose)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+
+    Bot bot(guessingWords, solutionWords, strategy, verbose);
+
+    int guesses = 0;
+#ifndef __APPLE__
+    auto policy = std::execution::par_unseq;  // use seq for sequential or par_unseq for parallel A ton faster but printing is garbled together across threads
+    std::for_each(policy, solutionWords.begin(), solutionWords.end(),
+        [&guesses, &bot, &openingGuess](const std::string& word)
+        {
+            guesses += bot.SolvePuzzle(word, openingGuess);
+        });
+#else
+    std::for_each(solutionWords.begin(), solutionWords.end(),
+        [&guesses, &bot, &openingGuess](const std::string& word)
+        {
+            guesses += bot.SolvePuzzle(word, openingGuess);
+        });
+#endif
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    std::cout << "Total guesses for : " << openingGuess << " " << guesses << std::endl;
+    std::cout << "Ave guesses : " << openingGuess << " " << (double)guesses / (double)solutionWords.size() << std::endl;
+    std::cout << "Time to solve all words in solution dictionary (msec): " << duration << "\n\n";
+
+    return (double)guesses / (double)solutionWords.size();
+}

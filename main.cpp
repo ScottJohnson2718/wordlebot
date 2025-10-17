@@ -21,6 +21,8 @@ int main(int argc, char *argv[])
     // the weakness in the dictionaries as used for the Lion Studios app.
     bool newYorkTimes = false;
 
+    bool verbose = true;
+
     Board board;
     std::string initialGuess("trace");
     std::filesystem::path dictPath(".");
@@ -47,6 +49,13 @@ int main(int argc, char *argv[])
             tokenIndex += 2;
             continue;
         }
+
+        if (strcmp(argv[tokenIndex], "--no-verbose") == 0)
+        {
+            verbose = false;
+            tokenIndex++;
+            continue;
+        }
         if (strcmp(argv[tokenIndex], "--init") == 0)
         {
             initialGuess = argv[tokenIndex + 1];
@@ -63,6 +72,17 @@ int main(int argc, char *argv[])
             std::cout << std::endl;
             return 0;
         }
+        if (strcmp(argv[tokenIndex], "--batch") == 0)
+        {
+            std::vector<std::string> guessingWords;
+            std::vector<std::string> solutionWords;
+            LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
+
+            ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
+            TestWords(solutionWords, guessingWords, initialGuess, scoreGrouping, verbose);
+            return 0;
+                
+        }
         if (strcmp(argv[tokenIndex], "--solve") == 0)
         {
             std::string solution = argv[tokenIndex+1];
@@ -72,7 +92,7 @@ int main(int argc, char *argv[])
 
             ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
             //LookaheadStrategy lookahead( scoreGrouping, guessingWords, 20);
-            Bot bot(guessingWords, solutionWords, scoreGrouping, true);
+            Bot bot(guessingWords, solutionWords, scoreGrouping, verbose);
             bot.SolvePuzzle(solution, initialGuess);
             std::cout << std::endl;
             return 0;

@@ -23,29 +23,39 @@ ScoredGuess ScoreGroupingStrategy::BestGuess(Board& board,
     {
         return ScoredGuess(solutionWords[0], 1);
     }
-    
+
     ScoredGuess bestGuess;
     size_t mostGroups = 0;
     size_t largestGroup = 0;
-    for (auto const& guessWord : guessingWords_)
+    if (solutionWords.size() > 6)
     {
-        size_t groupCount = ScoreGroupCount(guessWord, solutionWords, largestGroup);
-
-        if (groupCount > mostGroups)
+        for (auto const& guessWord : guessingWords_)
         {
-            mostGroups = groupCount;
-            bestGuess.first = guessWord;
-            bestGuess.second = ((float) mostGroups) + (float) 1.0f / (float) largestGroup;
+            size_t groupCount = ScoreGroupCount(guessWord, solutionWords, largestGroup);
+
+            if (groupCount > mostGroups)
+            {
+                mostGroups = groupCount;
+                bestGuess.first = guessWord;
+                bestGuess.second = ((float)mostGroups) + (float)1.0f / (float)largestGroup;
+            }
+        }
+    }
+    else
+    {
+        for (auto const& guessWord : solutionWords)
+        {
+            size_t groupCount = ScoreGroupCount(guessWord, solutionWords, largestGroup);
+
+            if (groupCount > mostGroups)
+            {
+                mostGroups = groupCount;
+                bestGuess.first = guessWord;
+                bestGuess.second = ((float)mostGroups) + (float)1.0f / (float)largestGroup;
+            }
         }
     }
 
-    //if (solutionWords.size() <= mostGroups)
-    //{
-    //    // The guessing words didn't partition into groups any better than the solutions
-    //   // themselves.
-    //    bestGuess.first = solutionWords[0];
-    //    bestGuess.second = 1.0;
-    //}
     return bestGuess;
 }
 

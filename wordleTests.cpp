@@ -277,31 +277,6 @@ TEST_F(NewYorkTimesFiveLetter, SinglePuzzlesScoreGroupingStrategy)
     EXPECT_LE(guessCount, 6);
 }
 
-float TestWords(std::vector<std::string>& solutionWords, const std::vector < std::string>& guessingWords,
-    const std::string& openingGuess, Strategy& strategy)
-{
-    Bot bot(guessingWords, solutionWords, strategy, true);
-
-    int guesses = 0;
-#ifndef __APPLE__
-    auto policy = std::execution::par_unseq;
-    std::for_each(policy, solutionWords.begin(), solutionWords.end(),
-        [&guesses, &bot, &openingGuess](const std::string& word)
-        {
-            guesses += bot.SolvePuzzle(word, openingGuess);
-        });
-#else
-    std::for_each(solutionWords.begin(), solutionWords.end(),
-        [&guesses, &bot, &openingGuess](const std::string& word)
-        {
-            guesses += bot.SolvePuzzle(word, openingGuess);
-        });
-#endif
-
-    std::cout << "Total guesses for : " << openingGuess << " " << guesses << std::endl;
-    std::cout << "Ave guesses : " << openingGuess << " " << (double)guesses / (double)solutionWords.size() << std::endl;
-    return (double)guesses / (double)solutionWords.size();
-}
 
 TEST(BatchSolve, Strategy)
 {
