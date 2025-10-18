@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <execution>
+#include <thread>
 
 bool LoadDictionary( const std::filesystem::path &filename, std::vector<std::string> &words)
 {
@@ -121,21 +121,32 @@ float TestWords(std::vector<std::string>& solutionWords, const std::vector < std
 
     Bot bot(guessingWords, solutionWords, strategy, verbose);
 
-    int guesses = 0;
-#ifndef __APPLE__
-    auto policy = std::execution::par_unseq;  // use seq for sequential or par_unseq for parallel A ton faster but printing is garbled together across threads
-    std::for_each(policy, solutionWords.begin(), solutionWords.end(),
-        [&guesses, &bot, &openingGuess](const std::string& word)
-        {
-            guesses += bot.SolvePuzzle(word, openingGuess);
+    std::atomic<size_t> guesses_atomic(0);
+    const size_t num_threads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+    threads.reserve(num_threads);
+
+    const size_t total_words = solutionWords.size();
+    const size_t chunk_size = (total_words + num_threads - 1) / num_threads;
+
+    for (size_t t = 0; t < num_threads; ++t) {
+        threads.emplace_back([&, t]() {
+            const size_t start = t * chunk_size;
+            const size_t end = std::min(start + chunk_size, total_words);
+
+            size_t local_guesses = 0;
+            for (size_t i = start; i < end; ++i) {
+                local_guesses += bot.SolvePuzzle(solutionWords[i], openingGuess);
+            }
+            guesses_atomic += local_guesses;
         });
-#else
-    std::for_each(solutionWords.begin(), solutionWords.end(),
-        [&guesses, &bot, &openingGuess](const std::string& word)
-        {
-            guesses += bot.SolvePuzzle(word, openingGuess);
-        });
-#endif
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    size_t guesses = guesses_atomic.load();
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

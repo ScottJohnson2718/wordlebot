@@ -24,7 +24,7 @@ struct Board
 
     void Pop();
 
-    std::vector<std::string> Board::PruneSearchSpace(const std::vector<std::string>& solutionWords) const;
+    std::vector<std::string> PruneSearchSpace(const std::vector<std::string>& solutionWords) const;
 
     std::vector< std::string> guesses;
     std::vector< ScoredWord > scores;

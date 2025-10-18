@@ -1,9 +1,17 @@
 cmake_minimum_required(VERSION 3.23)
-project(wordle LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
 option(WITH_CUDA "WITH_CUDA" ON)
+if (APPLE)
+    set(WITH_CUDA OFF)
+endif()
+
+if (WITH_CUDA)
+    project(wordle LANGUAGES CXX CUDA)
+else()
+    project(wordle LANGUAGES CXX)
+endif()
 
 # Fetch Google Test according to https://google.github.io/googletest/quickstart-cmake.html
 include(FetchContent)
