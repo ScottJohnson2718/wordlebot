@@ -30,6 +30,7 @@ add_library(WordleLib STATIC
         Wordle.h Wordle.cpp
         Board.cpp Board.h
         Strategy.cpp Strategy.h
+		Lookahead.cpp Lookahead.h
         WordleBot.cpp WordleBot.h )
 
 add_executable(wordlebot main.cpp)

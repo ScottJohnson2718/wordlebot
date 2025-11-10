@@ -8,6 +8,7 @@
 #include "Board.h"
 #include "Strategy.h"
 #include "WordleBot.h"
+#include "Lookahead.h"
 
 int main(int argc, char *argv[])
 {
@@ -78,8 +79,14 @@ int main(int argc, char *argv[])
             std::vector<std::string> solutionWords;
             LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
 
-            ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
-            TestWords(solutionWords, guessingWords, initialGuess, scoreGrouping, verbose);
+            ScoreGroupingLookaheadStrategy strategy(
+                guessingWords,
+                10,
+                2,              // deeper lookahead
+                true,           // adaptive (will go up to 3 when close)
+                200             // evaluate more candidates (slower but better)
+            );
+            TestWords(solutionWords, guessingWords, initialGuess, strategy, verbose);
             return 0;
                 
         }
@@ -90,9 +97,15 @@ int main(int argc, char *argv[])
             std::vector<std::string> solutionWords;
             LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
 
-            ScoreGroupingStrategy scoreGrouping(guessingWords, 10);
+            ScoreGroupingLookaheadStrategy strategy(
+                guessingWords,
+                10,
+                2,              // deeper lookahead
+                true,           // adaptive (will go up to 3 when close)
+                200             // evaluate more candidates (slower but better)
+            );
             //LookaheadStrategy lookahead( scoreGrouping, guessingWords, 20);
-            Bot bot(guessingWords, solutionWords, scoreGrouping, verbose);
+            Bot bot(guessingWords, solutionWords, strategy, verbose);
             bot.SolvePuzzle(solution, initialGuess);
             std::cout << std::endl;
             return 0;
@@ -151,8 +164,15 @@ int main(int argc, char *argv[])
         std::cout << "using Lion Studio App mode (use --nyt for New York Times)" << std::endl;
 
     //EntropyStrategy entropyStrategy(guessingWords, 50);
-    ScoreGroupingStrategy strategy(guessingWords, 10);
+    //ScoreGroupingStrategy strategy(guessingWords, 10);
     //LookaheadStrategy strategy(scoreGroupingStrategy,guessingWords, 10);
+    ScoreGroupingLookaheadStrategy strategy(
+        guessingWords,
+        30,
+        2,              // deeper lookahead
+        true,           // adaptive (will go up to 3 when close)
+        200             // evaluate more candidates (slower but better)
+    );
 
  
     std::vector<std::string>  remaining = board.PruneSearchSpace(solutionWords);
