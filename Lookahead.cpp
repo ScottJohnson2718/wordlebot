@@ -1,11 +1,10 @@
-
 #include "Lookahead.h"
 #include <iostream>
 #include <algorithm>
 
 ScoredGuess ScoreGroupingLookaheadStrategy::BestGuess(
-    Board& board,
-    const std::vector<std::string>& solutionWords) const {
+        Board& board,
+        const std::vector<std::string>& solutionWords) const {
 
     if (solutionWords.size() == 1) {
         return ScoredGuess(solutionWords[0], 1);
@@ -27,15 +26,15 @@ ScoredGuess ScoreGroupingLookaheadStrategy::BestGuess(
     float bestScore = std::numeric_limits<float>::max();
 
     const auto& candidateWords = (solutionWords.size() <= 6)
-        ? solutionWords
-        : guessingWords_;
+                                 ? solutionWords
+                                 : guessingWords_;
 
     for (const auto& guessWord : candidateWords) {
         float score;
 
         if (useLookahead) {
             score = ExpectedGuessesWithLookahead(
-                guessWord, solutionWords, effectiveDepth);
+                    guessWord, solutionWords, effectiveDepth);
         }
         else {
             score = ExpectedRemainingWords(guessWord, solutionWords);
@@ -52,8 +51,8 @@ ScoredGuess ScoreGroupingLookaheadStrategy::BestGuess(
 }
 
 std::vector<ScoredGuess> ScoreGroupingLookaheadStrategy::BestGuesses(
-    Board& board,
-    const std::vector<std::string>& solutionWords) const {
+        Board& board,
+        const std::vector<std::string>& solutionWords) const {
 
     std::vector<ScoredGuess> scoredGuesses;
 
@@ -74,12 +73,16 @@ std::vector<ScoredGuess> ScoreGroupingLookaheadStrategy::BestGuesses(
     // Use lookahead only when solution space is manageable
     bool useLookahead = effectiveDepth > 0 && solutionWords.size() <= 100;
 
-    for (const auto& guessWord : guessingWords_) {
+    const auto& candidateWords = (solutionWords.size() <= 6)
+                                 ? solutionWords
+                                 : guessingWords_;
+
+    for (const auto& guessWord : candidateWords) {
         float score;
 
         if (useLookahead) {
             score = ExpectedGuessesWithLookahead(
-                guessWord, solutionWords, effectiveDepth);
+                    guessWord, solutionWords, effectiveDepth);
         }
         else {
             score = ExpectedRemainingWords(guessWord, solutionWords);
@@ -95,9 +98,9 @@ std::vector<ScoredGuess> ScoreGroupingLookaheadStrategy::BestGuesses(
 
     // Sort them small to large (lower expected guesses is better)
     std::sort(scoredGuesses.begin(), scoredGuesses.end(),
-        [](const ScoredGuess& a, const ScoredGuess& b) {
-            return a.second < b.second;
-        });
+              [](const ScoredGuess& a, const ScoredGuess& b) {
+                  return a.second < b.second;
+              });
 
     for (size_t i = 0; i < std::min(maxGuessesReturned_, scoredGuesses.size()); ++i) {
         topGuessesByScore.push_back(scoredGuesses[i]);
