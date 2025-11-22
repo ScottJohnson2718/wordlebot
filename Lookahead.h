@@ -3,6 +3,7 @@
 #include "Strategy.h"
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <limits>
 #include <algorithm>
 
@@ -88,6 +89,9 @@ private:
 
         float totalExpectedGuesses = 0;
 
+        // Check if this guess is a possible solution
+        bool isSolutionWord = std::binary_search(solutionWords.begin(), solutionWords.end(), guessWord);
+
         for (const auto& [score, remainingWords] : scoreGroups) {
             if (remainingWords.empty())
                 continue;
@@ -95,11 +99,15 @@ private:
             float probability = (float)remainingWords.size() / solutionWords.size();
             float contribution;
 
-            if (remainingWords.size() == 1) {
-                // Solved after this guess
+            if (remainingWords.size() == 1 && isSolutionWord && remainingWords[0] == guessWord) {
+                // We guessed the solution! Done in 1 guess.
                 contribution = probability * 1.0f;
+            } else if (remainingWords.size() == 1) {
+                // One word left but we didn't guess it
+                // Need 1 more guess to finish (this guess + 1 more)
+                contribution = probability * 2.0f;
             } else {
-                // Need more guesses - find the best next guess for this branch
+                // Multiple words remain - find the best next guess for this branch
                 float bestNextScore = FindBestNextGuess(remainingWords, depth - 1);
 
                 // Add 1 for the current guess, plus expected guesses after
@@ -146,13 +154,8 @@ private:
     std::vector<std::string> GetCandidatesForLookahead(
             const std::vector<std::string>& solutionWords) const {
 
-        // If very few solutions left, only use solution words
-        // This ensures we have a chance to guess the solution immediately
-        if (solutionWords.size() <= 6) {
-            return solutionWords;
-        }
-
-        // Otherwise, get top candidates from guessing words
+        // Get top candidates from guessing words
+        // The lookahead scoring will naturally prefer solution words when optimal
         return GetTopCandidates(solutionWords, maxCandidatesInLookahead_);
     }
 
@@ -163,6 +166,15 @@ private:
 
         std::vector<ScoredGuess> quickScores;
 
+        // When there are few solutions left, always include all of them
+        // (they might solve immediately)
+        if (solutionWords.size() <= 10) {
+            for (const auto& word : solutionWords) {
+                float score = ExpectedRemainingWords(word, solutionWords);
+                quickScores.push_back(ScoredGuess(word, score));
+            }
+        }
+
         // Sample words from guessing dictionary for quick evaluation
         size_t sampleSize = std::min(500, (int) guessingWords_.size());
         size_t step = std::max(1, (int) (guessingWords_.size() / sampleSize));
@@ -172,22 +184,19 @@ private:
             quickScores.push_back(ScoredGuess(guessingWords_[i], score));
         }
 
-        // Also include some solution words
-        for (const auto& word : solutionWords) {
-            if (quickScores.size() < sampleSize) {
-                float score = ExpectedRemainingWords(word, solutionWords);
-                quickScores.push_back(ScoredGuess(word, score));
-            }
-        }
-
         std::sort(quickScores.begin(), quickScores.end(),
                   [](const ScoredGuess& a, const ScoredGuess& b) {
                       return a.second < b.second;
                   });
 
+        // Remove duplicates while preserving order
         std::vector<std::string> result;
-        for (size_t i = 0; i < std::min(maxCandidates, quickScores.size()); ++i) {
-            result.push_back(quickScores[i].first);
+        std::unordered_set<std::string> seen;
+        for (const auto& scored : quickScores) {
+            if (seen.find(scored.first) == seen.end() && result.size() < maxCandidates) {
+                result.push_back(scored.first);
+                seen.insert(scored.first);
+            }
         }
 
         return result;

@@ -97,6 +97,11 @@ int main(int argc, char *argv[])
             std::vector<std::string> solutionWords;
             LoadDictionaries(newYorkTimes, 5, dictPath, solutionWords, guessingWords);
 
+            if (!std::binary_search(solutionWords.begin(), solutionWords.end(), solution))
+            {
+                solutionWords.push_back(solution);
+                std::sort(solutionWords.begin(), solutionWords.end());
+            }
             ScoreGroupingLookaheadStrategy strategy(
                 guessingWords,
                 10,
