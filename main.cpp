@@ -193,20 +193,36 @@ int main(int argc, char *argv[])
     std::cout << std::endl;
 
     std::cout << "Best guesses " << std::endl;
+    float lastScore = 0.0f;
+    int maxPerLine = 15;
+    int sameLineCount = 0;
     auto bestGuesses = strategy.BestGuesses(board, remaining);
     for (const auto &g : bestGuesses)
     {
-        std::cout << g.first << " : " << g.second;
-
-        if (newYorkTimes)
-        {
-            if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
-            {
-                std::cout << " <-- solution word";
-            }
+        if (lastScore == 0.0) {
+            std::cout << g.second;
         }
-        std::cout << std::endl;
+        else if ((std::fabs(lastScore - g.second) > 0.001) || (sameLineCount >= maxPerLine)) {
+            std::cout << std::endl;
+            std::cout << g.second;
+            sameLineCount = 0;
+        }
+        else
+        {
+            sameLineCount++;
+        }
+        std::cout << " " << g.first;
+        lastScore = g.second;
+
+//        if (newYorkTimes)
+//        {
+//            if (std::binary_search(solutionWords.begin(), solutionWords.end(), g.first))
+//            {
+//                std::cout << " <-- solution word";
+//            }
+//        }
     }
+    std::cout << std::endl;
 }
 
 // wordlebot search strategy doesn't favor the solution words as guesses
