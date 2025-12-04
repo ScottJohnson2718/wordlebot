@@ -51,7 +51,7 @@ bool LoadDictionaries(bool newYorkTimes, int n,
     std::filesystem::path words5_long(dictPath);
     std::filesystem::path words5_short(dictPath);
     words5_long /= "words5_long";
-    words5_short /= "words5_short";
+    words5_short /= "nyt_words5.txt";
 
     if (!newYorkTimes)
     {
