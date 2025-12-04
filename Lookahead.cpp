@@ -1,14 +1,12 @@
 #include "Lookahead.h"
 #include <iostream>
 #include <algorithm>
-#include <thread>
 
 ScoredGuess ScoreGroupingLookaheadStrategy::BestGuess(
-        Board& board,
-        const std::vector<std::string>& solutionWords) const {
+    Board& board,
+    const std::vector<std::string>& solutionWords) const {
 
-    if (solutionWords.size() == 1)
-    {
+    if (solutionWords.size() == 1) {
         return ScoredGuess(solutionWords[0], 1);
     }
 
@@ -24,63 +22,28 @@ ScoredGuess ScoreGroupingLookaheadStrategy::BestGuess(
     // Use lookahead only when solution space is manageable
     bool useLookahead = effectiveDepth > 0 && solutionWords.size() <= 100;
 
-    const auto& candidateWords = (solutionWords.size() <= 6)
-                                 ? solutionWords
-                                 : guessingWords_;
+    ScoredGuess bestGuess;
+    float bestScore = std::numeric_limits<float>::max();
 
-    // Thread-safe result storage
-    std::atomic<float> bestScore(std::numeric_limits<float>::max());
-    std::string bestGuessWord;
-    std::mutex resultMutex;
+    for (const auto& guessWord : guessingWords_) {
+        float score;
 
-    const size_t num_threads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
-    threads.reserve(num_threads);
+        if (useLookahead) {
+            score = ExpectedGuessesWithLookahead(
+                guessWord, solutionWords, effectiveDepth);
+        }
+        else {
+            score = ExpectedRemainingWords(guessWord, solutionWords);
+        }
 
-    const size_t total_candidates = candidateWords.size();
-    const size_t chunk_size = (total_candidates + num_threads - 1) / num_threads;
-
-    for (size_t t = 0; t < num_threads; ++t) {
-        threads.emplace_back([&, t]() {
-            const size_t start = t * chunk_size;
-            const size_t end = std::min(start + chunk_size, total_candidates);
-
-            float localBestScore = std::numeric_limits<float>::max();
-            std::string localBestGuess;
-
-            for (size_t i = start; i < end; ++i) {
-                const auto& guessWord = candidateWords[i];
-                float score;
-
-                if (useLookahead) {
-                    score = ExpectedGuessesWithLookahead(
-                            guessWord, solutionWords, effectiveDepth);
-                }
-                else {
-                    score = ExpectedRemainingWords(guessWord, solutionWords);
-                }
-
-                if (score < localBestScore) {
-                    localBestScore = score;
-                    localBestGuess = guessWord;
-                }
-            }
-
-            // Update global best if local best is better
-            std::lock_guard<std::mutex> lock(resultMutex);
-            float currentBest = bestScore.load();
-            if (localBestScore < currentBest) {
-                bestScore.store(localBestScore);
-                bestGuessWord = localBestGuess;
-            }
-        });
+        if (score < bestScore) {
+            bestScore = score;
+            bestGuess.first = guessWord;
+            bestGuess.second = score;
+        }
     }
 
-    for (auto& thread : threads) {
-        thread.join();
-    }
-
-    return ScoredGuess(bestGuessWord, bestScore.load());
+    return bestGuess;
 }
 
 std::vector<ScoredGuess> ScoreGroupingLookaheadStrategy::BestGuesses(
