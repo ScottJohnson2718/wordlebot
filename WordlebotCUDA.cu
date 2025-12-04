@@ -156,6 +156,10 @@ void launch_build_pattern_table(
         );
 
     cudaDeviceSynchronize();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel error: %s\n", cudaGetErrorString(err));
+    }
 }
 
 // CUDA kernel to filter remaining solutions based on observed pattern
@@ -208,6 +212,10 @@ int launch_filter_solutions(
         );
 
     cudaDeviceSynchronize();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel error: %s\n", cudaGetErrorString(err));
+    }
 
     // Get the count
     int output_count;
@@ -233,6 +241,10 @@ void launch_compute_entropies(
         );
 
     cudaDeviceSynchronize();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel error: %s\n", cudaGetErrorString(err));
+    }
 }
 
 // Host-side pattern computation for filtering
